@@ -1,0 +1,114 @@
+name: Build Installers
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e . pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller gbridge.spec --distpath dist\windows --workpath build\windows --clean -y
+
+      - name: Upload Windows exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: gbridge-windows
+          path: dist/windows/gbridge.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e . pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller gbridge.spec --distpath dist/macos --workpath build/macos --clean -y
+
+      - name: Upload macOS binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: gbridge-macos
+          path: dist/macos/gbridge
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e . pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller gbridge.spec --distpath dist/linux --workpath build/linux --clean -y
+
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: gbridge-linux
+          path: dist/linux/gbridge
+
+  release:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Rename artifacts
+        run: |
+          mv artifacts/gbridge-windows/gbridge.exe artifacts/gbridge-windows.exe
+          mv artifacts/gbridge-macos/gbridge artifacts/gbridge-macos
+          mv artifacts/gbridge-linux/gbridge artifacts/gbridge-linux
+          chmod +x artifacts/gbridge-macos artifacts/gbridge-linux
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/gbridge-windows.exe
+            artifacts/gbridge-macos
+            artifacts/gbridge-linux
+          body: |
+            ## GBridge ${{ github.ref_name }}
+
+            ### Download for your platform:
+            | Platform | File | Instructions |
+            |---|---|---|
+            | **Windows** | `gbridge-windows.exe` | Download, double-click, follow the setup wizard |
+            | **macOS** | `gbridge-macos` | Download, `chmod +x gbridge-macos`, run `./gbridge-macos setup` |
+            | **Linux** | `gbridge-linux` | Download, `chmod +x gbridge-linux`, run `./gbridge-linux setup` |
+
+            No Python installation required. Everything is bundled.
+          draft: false
+          prerelease: false

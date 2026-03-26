@@ -6,92 +6,35 @@ GBridge is a free, open-source tool that keeps your Google and Outlook data in s
 
 Created by **Amit Rintzler**.
 
-## Key Features
+---
 
-- **Contacts** — Google People API with delta sync (only changed contacts)
-- **Calendar** — Google Calendar API with incremental sync tokens
-- **Tasks** — Google Tasks API with timestamp-based delta sync
-- **Two sync paths** — works with Microsoft 365 (cloud) *and* standalone classic Outlook
-- **Auto-detection** — GBridge silently figures out which Outlook you have
-- **Cross-platform** — Windows, macOS, and Linux
-- **Safe by design** — read-only Google scopes, SHA-256 diff engine, no fuzzy matching
+## Download & Install (No Technical Knowledge Needed)
 
-## Safety Guarantees
+### Windows
 
-GBridge is built with a **zero-risk** philosophy:
+1. Download **`gbridge-windows.exe`** from the [Releases page](https://github.com/amitrintzler/GBridge/releases/latest)
+2. Double-click the downloaded file
+3. The setup wizard opens and walks you through everything
 
-1. **Read-only Google access** — GBridge uses `readonly` API scopes. It *cannot* modify, delete, or corrupt your Google data. Ever.
-2. **No fuzzy matching** — items are tracked by their unique Google IDs (resource_name, event ID, task ID). No guessing, no accidental merges.
-3. **SHA-256 diff engine** — only items whose content has actually changed are synced. If nothing changed, nothing happens.
-4. **Local-only state** — all sync state lives in a local SQLite database on your machine. Nothing is sent to third-party servers.
-5. **Secure token storage** — OAuth tokens are stored in your OS keychain (Windows Credential Locker, macOS Keychain, Linux Secret Service) — never in plain-text files.
-6. **Atomic config writes** — configuration files are written atomically with restricted permissions (owner-only).
+**That's it. No Python, no terminal, no technical steps.**
+
+### macOS
+
+1. Download **`gbridge-macos`** from the [Releases page](https://github.com/amitrintzler/GBridge/releases/latest)
+2. Open Terminal (search "Terminal" in Spotlight)
+3. Run: `chmod +x ~/Downloads/gbridge-macos && ~/Downloads/gbridge-macos setup`
+
+### Linux
+
+1. Download **`gbridge-linux`** from the [Releases page](https://github.com/amitrintzler/GBridge/releases/latest)
+2. Open Terminal
+3. Run: `chmod +x ~/Downloads/gbridge-linux && ~/Downloads/gbridge-linux setup`
 
 ---
 
-## Quick Start — One Command Setup
+## What Happens When You Run It
 
-After installing, run this single command. It walks you through everything:
-
-```
-gbridge setup
-```
-
-The wizard will:
-1. Check your Python version
-2. Open Google Cloud Console in your browser
-3. Guide you through creating API credentials (with visual instructions)
-4. Authenticate your Google account
-5. Run your first sync
-
-**That's it. One command.**
-
----
-
-## Detailed Setup Guide
-
-If you prefer to set things up manually, follow these steps:
-
-### Step 1: Install Python
-
-You need Python 3.11 or newer. Check if you already have it:
-
-```
-python3 --version
-```
-
-You should see something like `Python 3.12.x`. If not, install it:
-
-- **Windows:** Download from [python.org](https://www.python.org/downloads/). Check "Add to PATH" during install.
-- **macOS:** `brew install python@3.12`
-- **Linux:** `sudo apt install python3.12` (Ubuntu/Debian) or `sudo dnf install python3.12` (Fedora)
-
-### Step 2: Install GBridge
-
-```
-pip install git+https://github.com/amitrintzler/GBridge.git
-```
-
-To verify it installed correctly, run:
-
-```
-gbridge --version
-```
-
-You should see:
-
-```
-GBridge v0.1.0
-Python 3.12.x on Linux
-```
-
-### Step 3: Run the Setup Wizard
-
-```
-gbridge setup
-```
-
-The wizard opens your browser and prints step-by-step visual instructions. Here's what you'll see:
+The setup wizard guides you through everything step by step:
 
 ```
 GBridge v0.1.0 — Setup Wizard
@@ -107,11 +50,7 @@ GBridge v0.1.0 — Setup Wizard
 [Step 2/5] Google API credentials
 ```
 
-If the credentials file isn't set up yet, the wizard shows you exactly what to do:
-
-### Visual Guide: Google Cloud Console Setup
-
-The wizard displays these visual guides in your terminal:
+If you haven't set up Google credentials yet, it shows you exactly what to click:
 
 ```
   +----------------------------------------------------------+
@@ -177,7 +116,7 @@ The wizard displays these visual guides in your terminal:
   +----------------------------------------------------------+
 ```
 
-After you download and place the file, press ENTER. The wizard continues:
+After you place the file and press ENTER, it finishes automatically:
 
 ```
 [Step 3/5] Signing in to Google...
@@ -205,75 +144,65 @@ After you download and place the file, press ENTER. The wizard continues:
   Your Google data was NOT modified. GBridge only reads.
 ```
 
-### Step 4: Check Status Anytime
-
-```
-gbridge status
-```
-
-Shows what's currently in the local sync ledger:
-
-```
-GBridge v0.1.0 — Status
-
-  Contacts in ledger:  342
-  Events in ledger:    128
-  Tasks in ledger:      15
-
-  Last synced: 2026-03-26T18:30:00+00:00
-
-  Database: /home/you/.config/gbridge/gbridge_sync.db
-  Config:   /home/you/.config/gbridge/client_secret.json
-```
-
 ---
 
-## CLI Commands
+## Key Features
+
+- **Contacts** — syncs all your Google contacts
+- **Calendar** — syncs all your Google calendar events
+- **Tasks** — syncs all your Google tasks
+- **Works with any Outlook** — Microsoft 365 (cloud) and standalone classic Outlook
+- **Auto-detection** — GBridge figures out which Outlook you have automatically
+- **Windows, macOS, and Linux**
+
+## Safety Guarantees
+
+GBridge is built with a **zero-risk** philosophy:
+
+1. **Read-only** — GBridge *cannot* modify, delete, or corrupt your Google data. It only reads.
+2. **No guessing** — items are tracked by unique IDs. No accidental merges.
+3. **Smart sync** — only items that actually changed are synced.
+4. **Local-only** — all data stays on your computer. Nothing goes to third-party servers.
+5. **Secure storage** — login tokens are stored in your OS keychain (Windows Credential Locker / macOS Keychain / Linux Secret Service).
+
+## Commands
 
 | Command | What it does |
 |---|---|
-| `gbridge setup` | **One-click setup wizard (start here!)** |
-| `gbridge` or `gbridge sync` | Run a sync cycle |
-| `gbridge status` | Show sync status and item counts |
-| `gbridge auth` | Re-authenticate with Google |
-| `gbridge --version` | Show version info |
+| `gbridge setup` | **First-time setup wizard (start here)** |
+| `gbridge` | Run a sync |
+| `gbridge status` | Check what's synced |
+| `gbridge auth` | Sign in to Google again |
+| `gbridge --version` | Show version |
 
 ## Where Is My Data?
 
-| What | Location |
-|---|---|
-| Config file | Windows: `%APPDATA%\GBridge\config.json` / macOS: `~/Library/Application Support/GBridge/config.json` / Linux: `~/.config/gbridge/config.json` |
-| Sync database | Same folder as config, named `gbridge_sync.db` |
-| Credentials | Stored in your OS keychain (not a file) |
-| Logs | Same folder, under `logs/gbridge.log` |
-
-Run `gbridge status` to see the exact paths on your system.
+| What | Windows | macOS | Linux |
+|---|---|---|---|
+| Config | `%APPDATA%\GBridge\` | `~/Library/Application Support/GBridge/` | `~/.config/gbridge/` |
+| Sync database | Same folder | Same folder | Same folder |
+| Login tokens | Windows Credential Locker | macOS Keychain | Secret Service |
+| Logs | Same folder, `logs/` | Same folder, `logs/` | Same folder, `logs/` |
 
 ## Troubleshooting
 
-**"GBridge needs a Google API credentials file"**
-Run `gbridge setup` — it will guide you through creating one. Or follow the visual guide above.
+**The setup wizard says it can't find `client_secret.json`**
+Follow the visual guide in the wizard. It tells you exactly where to put the file.
 
-**"Authentication failed"**
-Run `gbridge auth` to re-authenticate. Make sure you enabled all 3 APIs (People, Calendar, Tasks) in the Google Cloud Console.
+**Browser doesn't open?**
+Copy the URL from the terminal and paste it into your browser.
 
-**"Token refresh failed"**
-Your saved token expired. Run `gbridge auth` to sign in again.
+**"Authentication failed"?**
+Run `gbridge auth` to sign in again. Make sure you enabled all 3 APIs in Google Cloud Console.
 
-**Browser doesn't open automatically?**
-Copy the URL from the terminal and paste it into your browser manually.
+**Want to start over?**
+Run `gbridge auth` to re-authenticate, or delete the config folder (see "Where Is My Data?" above).
 
-**Don't know where to put `client_secret.json`?**
-Run `gbridge setup` or `gbridge sync` — both will print the exact path.
+---
 
-## Development
+## For Developers
 
-### Prerequisites
-
-- Python 3.11+
-- [uv](https://docs.astral.sh/uv/) (recommended) or pip
-
-### Setup
+### Install from source
 
 ```bash
 git clone https://github.com/amitrintzler/GBridge.git
@@ -281,62 +210,54 @@ cd GBridge
 pip install -e ".[dev]"
 ```
 
-### Run Tests
+### Run tests
 
 ```bash
 pytest tests/ -v
+ruff check src/ tests/
 ```
 
-### Lint & Type Check
+### Build installers
 
 ```bash
-ruff check src/ tests/
-mypy src/gbridge/ --ignore-missing-imports
+# Windows (run on Windows)
+installer\windows\build.bat
+
+# macOS (run on macOS)
+bash installer/macos/build.sh
+
+# Linux (run on Linux)
+bash installer/linux/build.sh
 ```
 
-## Project Structure
+### Project Structure
 
 ```
 src/gbridge/
-  __main__.py          # CLI entry point (setup, sync, status, auth, version)
+  __main__.py          # CLI (setup wizard, sync, status, auth)
   core/
-    engine.py          # Sync orchestrator: fetch -> diff -> ledger
-    ledger.py          # SQLite sync state tracking
+    engine.py          # Sync orchestrator
+    ledger.py          # SQLite sync state
     hasher.py          # SHA-256 content fingerprinting
   google/
-    auth.py            # OAuth 2.0 with OS keychain storage
-    people.py          # Contacts API (People API v1)
-    calendar.py        # Calendar API v3
-    tasks.py           # Tasks API v1
-    models.py          # Immutable data models
+    auth.py            # OAuth 2.0 + OS keychain
+    people.py          # Contacts API
+    calendar.py        # Calendar API
+    tasks.py           # Tasks API
+    models.py          # Data models
   outlook/
-    detect.py          # M365 vs standalone auto-detection
+    detect.py          # M365 vs standalone detection
   config/
-    settings.py        # JSON config management
-    defaults.py        # Default values and constants
+    settings.py        # JSON config
+    defaults.py        # Constants
   utils/
     logger.py          # Rotating file logger
-    backoff.py         # Exponential retry for API calls
+    backoff.py         # API retry logic
+installer/
+  windows/             # NSIS installer + build script
+  macos/               # .app bundle + build script
+  linux/               # .deb/.rpm + build script
 ```
-
-## How It Works
-
-```
-Google Account                    GBridge                         Outlook
-  (read-only)               (local on your machine)
-
-  Contacts  ------>  Fetch via People API  ------>  (Phase 2)
-  Calendar  ------>  Fetch via Calendar API ----->  (Phase 2)
-  Tasks     ------>  Fetch via Tasks API   ------>  (Phase 2)
-                          |
-                     SHA-256 diff
-                          |
-                     SQLite ledger
-                  (tracks what changed)
-```
-
-**Phase 1** (current): Fetches from Google, computes diffs, tracks state locally.
-**Phase 2** (next): Writes changes to Outlook via Microsoft Graph API or local DAV server.
 
 ## License
 
