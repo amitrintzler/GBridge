@@ -35,14 +35,19 @@ graph LR
 
 **Why haven't Google or Microsoft fixed this?**
 
-- **Google killed Google Sync** in 2012. It used to let Outlook connect directly to Google — they shut it down.
-- **Microsoft discontinued the Outlook Google Calendar Sync** plugin. It worked for years — gone.
-- **Neither company has any incentive to help you use the other's product.** Google wants you in Gmail. Microsoft wants you in Outlook. Keeping your data siloed keeps you locked in.
+- **Google killed Google Sync** on December 14, 2012. It used Exchange ActiveSync to let Outlook connect directly to Google — they shut it down for all consumer accounts. ([Ars Technica](https://arstechnica.com/information-technology/2012/12/google-drops-exchange-activesync-support-for-free-accounts/), [The Verge](https://www.theverge.com/2012/12/14/3767626/google-drops-exchange-activesync-support-gmail))
+- **Google also killed "Google Calendar Sync"** — their own desktop tool that synced Google Calendar with Outlook — discontinued in 2014. ([Google Support](https://support.google.com/calendar/answer/89955))
+- **Microsoft never built native Google sync into Outlook.** Their only option is a read-only calendar subscription (ICS) — no contacts, no tasks, no two-way sync. ([Microsoft Support](https://support.microsoft.com/en-us/office/see-your-google-calendar-in-outlook-c1dab514-0ad4-4811-824a-7d02c5e77126))
+- **Outlook desktop still doesn't support CalDAV/CardDAV** — the open standards that would make Google sync easy. Apple supports them natively. Microsoft chose not to.
+- **Neither company has any incentive to help you use the other's product.** Google wants you in Gmail. Microsoft wants you in Outlook. Keeping your data siloed keeps you locked in. (The EU recognized this — the [Digital Markets Act](https://digital-markets-act.ec.europa.eu/) specifically targets interoperability failures by tech gatekeepers.)
 - **Third-party "sync" tools exist, but they all have catches:**
-  - **Paid subscriptions** ($5–15/month) for something that should be basic
-  - **Route your data through their servers** — your contacts, calendar, and private appointments pass through some company's cloud
-  - **Stop working randomly** when Google or Microsoft changes their API
-  - **No transparency** — closed source, no way to know what they actually do with your data
+
+  | Tool | Price | Catches |
+  |---|---|---|
+  | [SyncGene](https://www.syncgene.com/) | $4.95–9.95/month | Routes data through their cloud servers |
+  | [CompanionLink](https://www.companionlink.com/) | $14.95/month | Closed source, proprietary |
+  | [gSyncit](https://www.gsyncit.com/) | $19.99 one-time | Windows-only, closed source |
+  | [Sync2 Cloud](https://www.sync2.com/) | $49.95 one-time | Closed source, Windows-only |
 
 **The result?** Millions of non-technical users — like my father — are stuck manually copying contacts between their phone and work computer, missing calendar events because they're in the wrong app, or just giving up and accepting that their digital life is fragmented.
 
@@ -284,13 +289,63 @@ graph LR
     style T2 fill:#f44336,stroke:#d32f2f,color:#fff
 ```
 
-GBridge is built with a **zero-risk** philosophy:
+GBridge is built with a **zero-risk** philosophy. Here's the proof — you can verify every claim yourself:
 
-1. **Read-only** — GBridge *cannot* modify, delete, or corrupt your Google data. It only reads.
-2. **No guessing** — items are tracked by unique IDs. No accidental merges.
-3. **Smart sync** — only items that actually changed are synced.
-4. **Local-only** — all data stays on your computer. Nothing goes to third-party servers.
-5. **Secure storage** — login tokens are stored in your OS keychain (Windows Credential Locker / macOS Keychain / Linux Secret Service).
+### 1. Read-only — it's impossible for GBridge to modify your Google data
+
+These are the exact Google API scopes in our code ([`src/gbridge/config/defaults.py` line 13-15](https://github.com/amitrintzler/GBridge/blob/main/src/gbridge/config/defaults.py#L13-L15)):
+
+```python
+GOOGLE_SCOPES = [
+    "https://www.googleapis.com/auth/contacts.readonly",
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/tasks.readonly",
+]
+```
+
+Every scope ends in `.readonly`. Google enforces this at the API level — even if our code tried to write, Google would reject it. You can also see this when you authorize GBridge: the Google consent screen will say **"View your contacts"**, not "Edit your contacts".
+
+### 2. No guessing — tracked by unique Google IDs
+
+Items are matched by their Google-assigned unique IDs ([`src/gbridge/core/engine.py` line 177-183](https://github.com/amitrintzler/GBridge/blob/main/src/gbridge/core/engine.py#L177-L183)):
+- Contacts: `resource_name` (e.g. `people/c1234567890`)
+- Events: `event_id`
+- Tasks: `task_id`
+
+No fuzzy name matching, no "best guess" merging. If the ID doesn't match, it's a different item.
+
+### 3. Smart sync — SHA-256 hash proves what changed
+
+Every item is fingerprinted with SHA-256 ([`src/gbridge/core/hasher.py`](https://github.com/amitrintzler/GBridge/blob/main/src/gbridge/core/hasher.py)). If the hash matches the last sync, the item is skipped. Only real changes trigger action.
+
+### 4. Local-only — no external servers
+
+Search the entire codebase for network calls: the only HTTP connections are to `googleapis.com` domains. There is no telemetry endpoint, no analytics SDK, no phone-home URL. Verify it yourself:
+
+```bash
+grep -r "http" src/gbridge/ --include="*.py" | grep -v "localhost" | grep -v "googleapis" | grep -v "google.com" | grep -v "github.com"
+```
+
+This returns nothing. Zero connections to anything except Google's official APIs.
+
+### 5. Secure token storage — OS keychain, not files
+
+Login tokens are stored via the `keyring` library ([`src/gbridge/google/auth.py` line 86-92](https://github.com/amitrintzler/GBridge/blob/main/src/gbridge/google/auth.py)):
+- **Windows**: Windows Credential Locker
+- **macOS**: macOS Keychain
+- **Linux**: GNOME Secret Service / KWallet
+
+Tokens are never written to plain-text files. You can verify: there is no `.json` or `.txt` file containing your Google token anywhere in the GBridge config folder.
+
+### 6. Automated security scanning on every code change
+
+| Check | What it does | Status |
+|---|---|---|
+| [Ruff Security Rules](https://github.com/amitrintzler/GBridge/blob/main/pyproject.toml) | 20+ categories: injection, hardcoded secrets, crypto issues | Every commit |
+| [Bandit](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml) | Deep static security analysis | Every commit |
+| [pip-audit](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml) | Scans dependencies for known CVEs | Every commit + weekly |
+| [CodeQL](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml) | GitHub's semantic code analysis | Every commit |
+| [SBOM](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml) | Full dependency bill of materials | Every release |
 
 ## Commands
 
