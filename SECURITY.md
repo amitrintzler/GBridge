@@ -69,16 +69,22 @@ Every code change is automatically scanned by:
 ## Code Signing
 
 ### Current Status
-Binaries are currently **unsigned**. On Windows, you may see a SmartScreen warning ("Windows protected your PC"). This is normal for new, unsigned software — it does not mean the software is malicious.
+Binaries are currently **unsigned**. On Windows, you may see a SmartScreen warning ("Windows protected your PC"). This is normal for all new open-source software — it does not mean the software is malicious. Microsoft shows this warning for any software that hasn't been downloaded thousands of times yet. As GBridge gains more users, this warning will disappear automatically.
 
 To bypass SmartScreen:
 1. Click "More info"
 2. Click "Run anyway"
 
-### Planned
-We are working on obtaining code signing certificates:
-- **Windows**: EV code signing certificate (eliminates SmartScreen warnings)
-- **macOS**: Apple Developer notarization (eliminates Gatekeeper warnings)
+On macOS, if Gatekeeper blocks the app:
+1. Open System Preferences > Security & Privacy
+2. Click "Open Anyway"
+
+### Why no code signing?
+Code signing certificates cost money ($200+/year). GBridge is a free, community-driven project — we don't charge users and we don't have corporate sponsors. Instead, we rely on:
+- **Full source code transparency** — every line is on GitHub
+- **Automated security scanning** — CodeQL, Bandit, pip-audit on every commit
+- **SHA-256 checksums** — verify your download matches what we built
+- **Reproducible builds** — you can build from source yourself
 
 ## Reporting a Vulnerability
 

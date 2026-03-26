@@ -99,15 +99,6 @@ jobs:
           echo "=== Checksums ==="
           cat checksums.sha256
 
-      # Windows code signing placeholder — uncomment when certificate is available
-      # - name: Sign Windows executable
-      #   run: |
-      #     echo "${{ secrets.WINDOWS_SIGNING_CERT }}" | base64 -d > cert.pfx
-      #     osslsigncode sign -pkcs12 cert.pfx -pass "${{ secrets.SIGNING_CERT_PASSWORD }}" \
-      #       -n "GBridge" -i "https://github.com/amitrintzler/GBridge" \
-      #       -in artifacts/gbridge-windows.exe -out artifacts/gbridge-windows-signed.exe
-      #     mv artifacts/gbridge-windows-signed.exe artifacts/gbridge-windows.exe
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

@@ -16,6 +16,27 @@ Created by **Amit Rintzler**.
 
 ---
 
+## Why Does GBridge Exist?
+
+**The problem is simple:** billions of people use Google for personal life and Outlook for work. Their contacts, calendars, and tasks live in two separate worlds that don't talk to each other.
+
+**Why haven't Google or Microsoft fixed this?**
+
+- **Google killed Google Sync** in 2012. It used to let Outlook connect directly to Google — they shut it down.
+- **Microsoft discontinued the Outlook Google Calendar Sync** plugin. It worked for years — gone.
+- **Neither company has any incentive to help you use the other's product.** Google wants you in Gmail. Microsoft wants you in Outlook. Keeping your data siloed keeps you locked in.
+- **Third-party "sync" tools exist, but they all have catches:**
+  - **Paid subscriptions** ($5–15/month) for something that should be basic
+  - **Route your data through their servers** — your contacts, calendar, and private appointments pass through some company's cloud
+  - **Stop working randomly** when Google or Microsoft changes their API
+  - **No transparency** — closed source, no way to know what they actually do with your data
+
+**The result?** Millions of non-technical users — like my father — are stuck manually copying contacts between their phone and work computer, missing calendar events because they're in the wrong app, or just giving up and accepting that their digital life is fragmented.
+
+**GBridge fixes this.** It's free, open source, runs on your computer (your data never touches our servers — we don't even have servers), and it works. That's it. No subscription, no cloud middleman, no lock-in.
+
+---
+
 ## Download & Install (No Technical Knowledge Needed)
 
 ### Windows
