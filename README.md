@@ -18,6 +18,19 @@ Created by **Amit Rintzler**.
 
 ## Why Does GBridge Exist?
 
+```mermaid
+graph LR
+    subgraph "❌ Today: Your Data is Trapped"
+        direction LR
+        G["🟢 Google\nContacts\nCalendar\nTasks"]
+        O["🔵 Outlook\nContacts\nCalendar\nTasks"]
+        G -.-x|"No sync\n(killed by Google & Microsoft)"| O
+    end
+
+    style G fill:#34a853,stroke:#1e8e3e,color:#fff,stroke-width:2px
+    style O fill:#0078d4,stroke:#005a9e,color:#fff,stroke-width:2px
+```
+
 **The problem is simple:** billions of people use Google for personal life and Outlook for work. Their contacts, calendars, and tasks live in two separate worlds that don't talk to each other.
 
 **Why haven't Google or Microsoft fixed this?**
@@ -34,6 +47,22 @@ Created by **Amit Rintzler**.
 **The result?** Millions of non-technical users — like my father — are stuck manually copying contacts between their phone and work computer, missing calendar events because they're in the wrong app, or just giving up and accepting that their digital life is fragmented.
 
 **GBridge fixes this.** It's free, open source, runs on your computer (your data never touches our servers — we don't even have servers), and it works. That's it. No subscription, no cloud middleman, no lock-in.
+
+```mermaid
+graph LR
+    subgraph "✅ With GBridge: Connected"
+        direction LR
+        G2["🟢 Google\nContacts\nCalendar\nTasks"]
+        B["🟠 GBridge\n(on your computer)"]
+        O2["🔵 Outlook\nContacts\nCalendar\nTasks"]
+        G2 -->|"Read-only\n(safe)"| B
+        B -->|"Write sync\n(Phase 2)"| O2
+    end
+
+    style G2 fill:#34a853,stroke:#1e8e3e,color:#fff,stroke-width:2px
+    style B fill:#ff6d00,stroke:#e65100,color:#fff,stroke-width:3px
+    style O2 fill:#0078d4,stroke:#005a9e,color:#fff,stroke-width:2px
+```
 
 ---
 
@@ -175,6 +204,51 @@ After you place the file and press ENTER, it finishes automatically:
 
 ---
 
+## How It Works
+
+```mermaid
+graph TD
+    subgraph "🟢 Google Cloud (read-only)"
+        P["👥 People API\n(Contacts)"]
+        C["📅 Calendar API\n(Events)"]
+        T["✅ Tasks API\n(Tasks)"]
+    end
+
+    subgraph "🟠 GBridge (on your computer)"
+        A["🔑 OAuth 2.0\nAuthentication"]
+        E["⚙️ Sync Engine"]
+        H["🔒 SHA-256\nDiff Engine"]
+        L["💾 SQLite\nLedger"]
+    end
+
+    subgraph "🔵 Microsoft Outlook"
+        M365["☁️ Microsoft 365\n(Graph API)"]
+        OL["💻 Standalone Outlook\n(local DAV server)"]
+    end
+
+    P -->|"read-only"| E
+    C -->|"read-only"| E
+    T -->|"read-only"| E
+    A -.->|"secure token\n(OS keychain)"| E
+    E --> H
+    H -->|"only changes"| L
+    L -.->|"Phase 2"| M365
+    L -.->|"Phase 2"| OL
+
+    style P fill:#34a853,stroke:#1e8e3e,color:#fff
+    style C fill:#34a853,stroke:#1e8e3e,color:#fff
+    style T fill:#34a853,stroke:#1e8e3e,color:#fff
+    style A fill:#ff6d00,stroke:#e65100,color:#fff
+    style E fill:#ff6d00,stroke:#e65100,color:#fff
+    style H fill:#ff6d00,stroke:#e65100,color:#fff
+    style L fill:#ff6d00,stroke:#e65100,color:#fff
+    style M365 fill:#0078d4,stroke:#005a9e,color:#fff
+    style OL fill:#0078d4,stroke:#005a9e,color:#fff
+```
+
+**Phase 1** (current): Reads from Google, detects changes, saves locally.
+**Phase 2** (next): Writes to Outlook — either via Microsoft Graph API (M365) or a local DAV server (standalone Outlook).
+
 ## Key Features
 
 - **Contacts** — syncs all your Google contacts
@@ -185,6 +259,30 @@ After you place the file and press ENTER, it finishes automatically:
 - **Windows, macOS, and Linux**
 
 ## Safety Guarantees
+
+```mermaid
+graph LR
+    subgraph "🛡️ What GBridge CAN Do"
+        R["📖 READ your Google\ncontacts, calendar, tasks"]
+        S["💾 SAVE data locally\non your computer"]
+        K["🔑 STORE login token\nin OS keychain"]
+    end
+
+    subgraph "🚫 What GBridge CANNOT Do"
+        W["✏️ Modify your\nGoogle data"]
+        D["🗑️ Delete anything\nin your account"]
+        N["📡 Send data to\nany other server"]
+        T2["📊 Track you or\ncollect analytics"]
+    end
+
+    style R fill:#4caf50,stroke:#388e3c,color:#fff
+    style S fill:#4caf50,stroke:#388e3c,color:#fff
+    style K fill:#4caf50,stroke:#388e3c,color:#fff
+    style W fill:#f44336,stroke:#d32f2f,color:#fff
+    style D fill:#f44336,stroke:#d32f2f,color:#fff
+    style N fill:#f44336,stroke:#d32f2f,color:#fff
+    style T2 fill:#f44336,stroke:#d32f2f,color:#fff
+```
 
 GBridge is built with a **zero-risk** philosophy:
 
