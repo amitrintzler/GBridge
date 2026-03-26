@@ -1,0 +1,42 @@
+"""Default configuration values for GBridge."""
+
+from __future__ import annotations
+
+APP_NAME = "GBridge"
+APP_VERSION = "0.1.0"
+
+DEFAULT_SYNC_INTERVAL_MINUTES = 15
+DEFAULT_DB_NAME = "gbridge_sync.db"
+
+# Google API scopes — READ-ONLY to guarantee zero impact on user data.
+GOOGLE_SCOPES: list[str] = [
+    "https://www.googleapis.com/auth/contacts.readonly",
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/tasks.readonly",
+]
+
+# Google API service versions
+PEOPLE_API_VERSION = "v1"
+CALENDAR_API_VERSION = "v3"
+TASKS_API_VERSION = "v1"
+
+# People API field mask — only fields we need for sync
+PEOPLE_PERSON_FIELDS = (
+    "names,emailAddresses,phoneNumbers,organizations,biographies,metadata"
+)
+
+# Pagination limits
+DEFAULT_PAGE_SIZE = 250
+MAX_PAGE_SIZE = 1000
+
+# Keyring service name for credential storage
+KEYRING_SERVICE = "gbridge"
+KEYRING_GOOGLE_TOKEN_KEY = "google_credentials"
+
+# Localhost-only DAV server (for standalone Outlook path B)
+DAV_HOST = "127.0.0.1"
+DAV_PORT = 8765
+
+# Retry / backoff
+MAX_RETRIES = 3
+BASE_RETRY_DELAY_SECONDS = 1.0
