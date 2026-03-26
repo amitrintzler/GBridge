@@ -1,5 +1,13 @@
 # GBridge
 
+[![CI](https://github.com/amitrintzler/GBridge/actions/workflows/ci.yml/badge.svg)](https://github.com/amitrintzler/GBridge/actions/workflows/ci.yml)
+[![Security](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml/badge.svg)](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/amitrintzler/GBridge/blob/main/LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Google Scopes: Read-Only](https://img.shields.io/badge/Google_Scopes-Read--Only-brightgreen.svg)](#safety-guarantees)
+[![No Telemetry](https://img.shields.io/badge/Telemetry-None-brightgreen.svg)](https://github.com/amitrintzler/GBridge/blob/main/SECURITY.md)
+[![Open Source](https://img.shields.io/badge/Open_Source-100%25-brightgreen.svg)](https://github.com/amitrintzler/GBridge)
+
 **Sync your Google Contacts, Calendar, and Tasks with Microsoft Outlook.**
 
 GBridge is a free, open-source tool that keeps your Google and Outlook data in sync — automatically, securely, and without touching your existing data.

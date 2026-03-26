@@ -38,6 +38,8 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.6.0",
     "pyinstaller>=6.0.0",
+    "pip-audit>=2.6.0",
+    "bandit[toml]>=1.7.0",
 ]
 
 [project.scripts]
@@ -59,6 +61,10 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B603", "B607"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

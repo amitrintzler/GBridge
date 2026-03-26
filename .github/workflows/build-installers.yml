@@ -92,6 +92,22 @@ jobs:
           mv artifacts/gbridge-linux/gbridge artifacts/gbridge-linux
           chmod +x artifacts/gbridge-macos artifacts/gbridge-linux
 
+      - name: Generate SHA-256 checksums
+        run: |
+          cd artifacts
+          sha256sum gbridge-windows.exe gbridge-macos gbridge-linux > checksums.sha256
+          echo "=== Checksums ==="
+          cat checksums.sha256
+
+      # Windows code signing placeholder — uncomment when certificate is available
+      # - name: Sign Windows executable
+      #   run: |
+      #     echo "${{ secrets.WINDOWS_SIGNING_CERT }}" | base64 -d > cert.pfx
+      #     osslsigncode sign -pkcs12 cert.pfx -pass "${{ secrets.SIGNING_CERT_PASSWORD }}" \
+      #       -n "GBridge" -i "https://github.com/amitrintzler/GBridge" \
+      #       -in artifacts/gbridge-windows.exe -out artifacts/gbridge-windows-signed.exe
+      #     mv artifacts/gbridge-windows-signed.exe artifacts/gbridge-windows.exe
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -99,6 +115,7 @@ jobs:
             artifacts/gbridge-windows.exe
             artifacts/gbridge-macos
             artifacts/gbridge-linux
+            artifacts/checksums.sha256
           body: |
             ## GBridge ${{ github.ref_name }}
 
@@ -110,5 +127,15 @@ jobs:
             | **Linux** | `gbridge-linux` | Download, `chmod +x gbridge-linux`, run `./gbridge-linux setup` |
 
             No Python installation required. Everything is bundled.
+
+            ### Verify your download
+            Download `checksums.sha256` and verify:
+            - **Windows (PowerShell):** `Get-FileHash gbridge-windows.exe -Algorithm SHA256`
+            - **macOS/Linux:** `sha256sum -c checksums.sha256`
+
+            ### Security
+            - All builds are scanned by CodeQL, Bandit, and pip-audit
+            - Full SBOM (Software Bill of Materials) available in CI artifacts
+            - See [SECURITY.md](https://github.com/amitrintzler/GBridge/blob/main/SECURITY.md) for details
           draft: false
           prerelease: false

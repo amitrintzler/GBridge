@@ -57,6 +57,16 @@ def cmd_setup(args: argparse.Namespace) -> int:
     _print("  Welcome! This wizard will set up GBridge for you.")
     _print("  It takes about 5 minutes, and you only do it once.")
     _print("=" * 56)
+    _print()
+    _print("  SAFETY INFO:")
+    _print("  - GBridge only READS from Google (contacts,")
+    _print("    calendar, tasks). It CANNOT modify or delete")
+    _print("    anything in your Google account.")
+    _print("  - All data stays on this computer.")
+    _print("  - No data is sent anywhere except to Google's")
+    _print("    own servers (to read your data).")
+    _print("  - GBridge is open source — anyone can inspect")
+    _print("    the code at github.com/amitrintzler/GBridge")
 
     # Step 1: Python check
     _print("\n[Step 1/5] Checking Python version...")
