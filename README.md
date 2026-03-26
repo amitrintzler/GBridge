@@ -27,7 +27,30 @@ GBridge is built with a **zero-risk** philosophy:
 5. **Secure token storage** — OAuth tokens are stored in your OS keychain (Windows Credential Locker, macOS Keychain, Linux Secret Service) — never in plain-text files.
 6. **Atomic config writes** — configuration files are written atomically with restricted permissions (owner-only).
 
-## Quick Start (5 minutes)
+---
+
+## Quick Start — One Command Setup
+
+After installing, run this single command. It walks you through everything:
+
+```
+gbridge setup
+```
+
+The wizard will:
+1. Check your Python version
+2. Open Google Cloud Console in your browser
+3. Guide you through creating API credentials (with visual instructions)
+4. Authenticate your Google account
+5. Run your first sync
+
+**That's it. One command.**
+
+---
+
+## Detailed Setup Guide
+
+If you prefer to set things up manually, follow these steps:
 
 ### Step 1: Install Python
 
@@ -62,67 +85,127 @@ GBridge v0.1.0
 Python 3.12.x on Linux
 ```
 
-### Step 3: Set Up Google API Credentials (one-time)
-
-GBridge needs permission to read your Google data. This takes about 3 minutes:
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Click **Select a project** > **New Project** > name it "GBridge" > **Create**
-3. In the search bar, search for and enable each of these APIs:
-   - **People API**
-   - **Google Calendar API**
-   - **Tasks API**
-4. Go to **APIs & Services** > **Credentials**
-5. Click **Create Credentials** > **OAuth 2.0 Client ID**
-   - If asked to configure a consent screen, choose **External**, fill in the app name ("GBridge"), and save
-6. For Application type, choose **Desktop application**
-7. Click **Create**, then **Download JSON**
-8. Rename the downloaded file to `client_secret.json`
-9. Move it to your GBridge config folder:
-
-| OS | Location |
-|---|---|
-| Windows | `%APPDATA%\GBridge\client_secret.json` |
-| macOS | `~/Library/Application Support/GBridge/client_secret.json` |
-| Linux | `~/.config/gbridge/client_secret.json` |
-
-**Don't know where to put it?** Just run `gbridge` — it will tell you the exact path.
-
-### Step 4: Run Your First Sync
+### Step 3: Run the Setup Wizard
 
 ```
-gbridge
+gbridge setup
 ```
 
-**What happens:**
-
-1. Your browser opens to a Google sign-in page
-2. Sign in and click "Allow" (GBridge only requests read-only access)
-3. The browser shows "Authentication successful" — you can close it
-4. Back in the terminal, you'll see:
+The wizard opens your browser and prints step-by-step visual instructions. Here's what you'll see:
 
 ```
-GBridge v0.1.0
+GBridge v0.1.0 — Setup Wizard
 
-Connecting to Google...
-Authenticated with Google.
+========================================================
+  Welcome! This wizard will set up GBridge for you.
+  It takes about 5 minutes, and you only do it once.
+========================================================
 
-Syncing...
+[Step 1/5] Checking Python version...
+  Python 3.12.0 — OK
 
-Sync complete:
-  Contacts       342 found  (342 new, 0 updated, 0 unchanged)
-  Events         128 found  (128 new, 0 updated, 0 unchanged)
-  Tasks           15 found  (15 new, 0 updated, 0 unchanged)
-
-  Outlook: not_found
-  (Outlook write-back will be available in Phase 2)
-
-All data saved locally. No changes were made to your Google account.
+[Step 2/5] Google API credentials
 ```
 
-That's it. GBridge has read your Google data and saved a local snapshot. Your Google account was not modified in any way.
+If the credentials file isn't set up yet, the wizard shows you exactly what to do:
 
-### Step 5: Check Status Anytime
+### Visual Guide: Google Cloud Console Setup
+
+The wizard displays these visual guides in your terminal:
+
+```
+  +----------------------------------------------------------+
+  |  STEP A: Create a Google Cloud Project                   |
+  +----------------------------------------------------------+
+  |                                                          |
+  |  1. Go to: https://console.cloud.google.com              |
+  |                                                          |
+  |  2. Click the project dropdown at the top:               |
+  |     +---------------------------------------------+      |
+  |     | [v] Select a project          [NEW PROJECT] |      |
+  |     +---------------------------------------------+      |
+  |                                        ^^^^^^^^^^^       |
+  |                                    Click "NEW PROJECT"   |
+  |                                                          |
+  |  3. Name it "GBridge" and click CREATE                   |
+  +----------------------------------------------------------+
+
+  +----------------------------------------------------------+
+  |  STEP B: Enable the 3 APIs                               |
+  +----------------------------------------------------------+
+  |                                                          |
+  |  In the search bar at the top, search for each API       |
+  |  and click ENABLE:                                       |
+  |                                                          |
+  |  +----------------------------------------------------+  |
+  |  | [Search] People API                                |  |
+  |  +----------------------------------------------------+  |
+  |     -> Click the result -> Click [ENABLE]                |
+  |                                                          |
+  |  Repeat for:                                             |
+  |     [x] People API                                       |
+  |     [x] Google Calendar API                              |
+  |     [x] Tasks API                                        |
+  +----------------------------------------------------------+
+
+  +----------------------------------------------------------+
+  |  STEP C: Create OAuth Credentials                        |
+  +----------------------------------------------------------+
+  |                                                          |
+  |  1. In the left sidebar, click:                          |
+  |     APIs & Services > Credentials                        |
+  |                                                          |
+  |  2. Click:  [+ CREATE CREDENTIALS]                       |
+  |             > OAuth client ID                            |
+  |                                                          |
+  |  3. If asked for consent screen:                         |
+  |     - Choose "External"                                  |
+  |     - App name: "GBridge"                                |
+  |     - Fill your email, click Save                        |
+  |                                                          |
+  |  4. Application type: [Desktop application]              |
+  |     Name: "GBridge"                                      |
+  |     Click [CREATE]                                       |
+  |                                                          |
+  |  5. On the popup, click:                                 |
+  |     +----------------------------------+                 |
+  |     |  [DOWNLOAD JSON]                 |                 |
+  |     +----------------------------------+                 |
+  |                                                          |
+  |  6. Rename the downloaded file to:                       |
+  |     client_secret.json                                   |
+  +----------------------------------------------------------+
+```
+
+After you download and place the file, press ENTER. The wizard continues:
+
+```
+[Step 3/5] Signing in to Google...
+  Your browser will open. Sign in and click 'Allow'.
+  Authenticated — OK
+
+[Step 4/5] Running your first sync...
+  Contacts       342 items synced
+  Events         128 items synced
+  Tasks           15 items synced
+
+[Step 5/5] Outlook detection...
+  No Outlook detected — Outlook sync coming in Phase 2
+
+========================================================
+  Setup complete! GBridge is ready.
+========================================================
+
+  What you can do now:
+
+    gbridge          Run a sync (fetches latest from Google)
+    gbridge status   See what's in your local sync ledger
+    gbridge auth     Re-authenticate if needed
+
+  Your Google data was NOT modified. GBridge only reads.
+```
+
+### Step 4: Check Status Anytime
 
 ```
 gbridge status
@@ -143,28 +226,45 @@ GBridge v0.1.0 — Status
   Config:   /home/you/.config/gbridge/client_secret.json
 ```
 
+---
+
 ## CLI Commands
 
 | Command | What it does |
 |---|---|
+| `gbridge setup` | **One-click setup wizard (start here!)** |
 | `gbridge` or `gbridge sync` | Run a sync cycle |
 | `gbridge status` | Show sync status and item counts |
 | `gbridge auth` | Re-authenticate with Google |
 | `gbridge --version` | Show version info |
 
+## Where Is My Data?
+
+| What | Location |
+|---|---|
+| Config file | Windows: `%APPDATA%\GBridge\config.json` / macOS: `~/Library/Application Support/GBridge/config.json` / Linux: `~/.config/gbridge/config.json` |
+| Sync database | Same folder as config, named `gbridge_sync.db` |
+| Credentials | Stored in your OS keychain (not a file) |
+| Logs | Same folder, under `logs/gbridge.log` |
+
+Run `gbridge status` to see the exact paths on your system.
+
 ## Troubleshooting
 
 **"GBridge needs a Google API credentials file"**
-You haven't placed `client_secret.json` yet. Follow Step 3 above. GBridge will print the exact path where it expects the file.
+Run `gbridge setup` — it will guide you through creating one. Or follow the visual guide above.
 
 **"Authentication failed"**
-Run `gbridge auth` to re-authenticate. If the problem persists, make sure you enabled all 3 APIs (People, Calendar, Tasks) in the Google Cloud Console.
+Run `gbridge auth` to re-authenticate. Make sure you enabled all 3 APIs (People, Calendar, Tasks) in the Google Cloud Console.
 
 **"Token refresh failed"**
 Your saved token expired. Run `gbridge auth` to sign in again.
 
 **Browser doesn't open automatically?**
 Copy the URL from the terminal and paste it into your browser manually.
+
+**Don't know where to put `client_secret.json`?**
+Run `gbridge setup` or `gbridge sync` — both will print the exact path.
 
 ## Development
 
@@ -198,7 +298,7 @@ mypy src/gbridge/ --ignore-missing-imports
 
 ```
 src/gbridge/
-  __main__.py          # CLI entry point (sync, status, auth, version)
+  __main__.py          # CLI entry point (setup, sync, status, auth, version)
   core/
     engine.py          # Sync orchestrator: fetch -> diff -> ledger
     ledger.py          # SQLite sync state tracking

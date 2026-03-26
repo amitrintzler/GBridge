@@ -6,8 +6,10 @@ Provides a user-friendly CLI with clear feedback at every step.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import platform
 import sys
+import webbrowser
 
 from gbridge import __version__
 from gbridge.config.defaults import GOOGLE_SCOPES
@@ -45,6 +47,180 @@ How to set it up (one-time, takes ~3 minutes):
 Then run 'gbridge' again.
 
 Need help? See: https://github.com/amitrintzler/GBridge#setup
+"""
+
+
+def cmd_setup(args: argparse.Namespace) -> int:
+    """Interactive one-click setup wizard — walks through everything."""
+    _print(f"GBridge v{__version__} — Setup Wizard\n")
+    _print("=" * 56)
+    _print("  Welcome! This wizard will set up GBridge for you.")
+    _print("  It takes about 5 minutes, and you only do it once.")
+    _print("=" * 56)
+
+    # Step 1: Python check
+    _print("\n[Step 1/5] Checking Python version...")
+    py_version = platform.python_version()
+    major, minor = sys.version_info[:2]
+    if major < 3 or (major == 3 and minor < 11):
+        _print(f"  Python {py_version} is too old. GBridge needs Python 3.11+.")
+        _print("  Download it from: https://www.python.org/downloads/")
+        return 1
+    _print(f"  Python {py_version} — OK\n")
+
+    settings = Settings()
+    secrets_path = settings.client_secrets_path
+
+    # Step 2: Check / guide client_secret.json
+    _print("[Step 2/5] Google API credentials")
+    if secrets_path.exists():
+        _print(f"  Found: {secrets_path} — OK\n")
+    else:
+        _print("  You need a Google API credentials file.")
+        _print("  Follow these steps (I'll open your browser to help):\n")
+        _print(_google_console_visual_guide())
+        _print(f"  Then save the file as:\n    {secrets_path}\n")
+
+        _print("  Opening Google Cloud Console in your browser...")
+        webbrowser.open("https://console.cloud.google.com/apis/dashboard")
+
+        _print("\n  When you're done, press ENTER to continue...")
+        with contextlib.suppress(EOFError):
+            input()
+
+        if not secrets_path.exists():
+            _print(f"  File not found at: {secrets_path}")
+            _print("  Please place the file there and run 'gbridge setup' again.")
+            return 1
+        _print("  Found it — OK\n")
+
+    # Step 3: Authenticate
+    _print("[Step 3/5] Signing in to Google...")
+    _print("  Your browser will open. Sign in and click 'Allow'.\n")
+    try:
+        from gbridge.google.auth import GoogleAuthManager
+
+        auth = GoogleAuthManager(secrets_path, GOOGLE_SCOPES)
+        auth.get_credentials()
+    except Exception as exc:
+        _print(f"  Authentication failed: {exc}")
+        _print("  Please try again with 'gbridge setup'.")
+        return 1
+    _print("  Authenticated — OK\n")
+
+    # Step 4: First sync
+    _print("[Step 4/5] Running your first sync...")
+    try:
+        from gbridge.core.engine import SyncEngine
+        from gbridge.core.ledger import SyncLedger
+
+        ledger = SyncLedger(settings.db_path)
+        try:
+            engine = SyncEngine(ledger, auth, settings)
+            results = engine.run_sync()
+        finally:
+            ledger.close()
+    except Exception as exc:
+        _print(f"  Sync failed: {exc}")
+        logger.exception("Sync failed during setup")
+        return 1
+
+    _print()
+    for rtype, stats in results.items():
+        total = stats.new + stats.updated + stats.unchanged
+        _print(f"  {rtype.capitalize():12s} {total:>5d} items synced")
+
+    # Step 5: Done
+    _print("\n[Step 5/5] Outlook detection...")
+    from gbridge.outlook.detect import detect_outlook
+
+    outlook = detect_outlook()
+    if outlook.value == "m365":
+        _print("  Microsoft 365 detected — will sync via Graph API (Phase 2)")
+    elif outlook.value == "standalone":
+        _print("  Standalone Outlook detected — will sync via DAV server (Phase 2)")
+    else:
+        _print("  No Outlook detected — Outlook sync coming in Phase 2")
+
+    _print("\n" + "=" * 56)
+    _print("  Setup complete! GBridge is ready.")
+    _print("=" * 56)
+    _print("""
+  What you can do now:
+
+    gbridge          Run a sync (fetches latest from Google)
+    gbridge status   See what's in your local sync ledger
+    gbridge auth     Re-authenticate if needed
+
+  Your Google data was NOT modified. GBridge only reads.
+""")
+    return 0
+
+
+def _google_console_visual_guide() -> str:
+    """Return an ASCII visual guide for Google Cloud Console setup."""
+    return """
+  +----------------------------------------------------------+
+  |  STEP A: Create a Google Cloud Project                   |
+  +----------------------------------------------------------+
+  |                                                          |
+  |  1. Go to: https://console.cloud.google.com              |
+  |                                                          |
+  |  2. Click the project dropdown at the top:               |
+  |     +---------------------------------------------+      |
+  |     | [v] Select a project          [NEW PROJECT] |      |
+  |     +---------------------------------------------+      |
+  |                                        ^^^^^^^^^^^       |
+  |                                    Click "NEW PROJECT"   |
+  |                                                          |
+  |  3. Name it "GBridge" and click CREATE                   |
+  +----------------------------------------------------------+
+
+  +----------------------------------------------------------+
+  |  STEP B: Enable the 3 APIs                               |
+  +----------------------------------------------------------+
+  |                                                          |
+  |  In the search bar at the top, search for each API       |
+  |  and click ENABLE:                                       |
+  |                                                          |
+  |  +----------------------------------------------------+  |
+  |  | [Search] People API                                |  |
+  |  +----------------------------------------------------+  |
+  |     -> Click the result -> Click [ENABLE]                |
+  |                                                          |
+  |  Repeat for:                                             |
+  |     [x] People API                                       |
+  |     [x] Google Calendar API                              |
+  |     [x] Tasks API                                        |
+  +----------------------------------------------------------+
+
+  +----------------------------------------------------------+
+  |  STEP C: Create OAuth Credentials                        |
+  +----------------------------------------------------------+
+  |                                                          |
+  |  1. In the left sidebar, click:                          |
+  |     APIs & Services > Credentials                        |
+  |                                                          |
+  |  2. Click:  [+ CREATE CREDENTIALS]                       |
+  |             > OAuth client ID                            |
+  |                                                          |
+  |  3. If asked for consent screen:                         |
+  |     - Choose "External"                                  |
+  |     - App name: "GBridge"                                |
+  |     - Fill your email, click Save                        |
+  |                                                          |
+  |  4. Application type: [Desktop application]              |
+  |     Name: "GBridge"                                      |
+  |     Click [CREATE]                                       |
+  |                                                          |
+  |  5. On the popup, click:                                 |
+  |     +----------------------------------+                 |
+  |     |  [DOWNLOAD JSON]                 |                 |
+  |     +----------------------------------+                 |
+  |                                                          |
+  |  6. Rename the downloaded file to:                       |
+  |     client_secret.json                                   |
+  +----------------------------------------------------------+
 """
 
 
@@ -202,6 +378,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command")
 
+    subparsers.add_parser("setup", help="one-click setup wizard (start here!)")
     subparsers.add_parser("sync", help="run a sync cycle (default)")
     subparsers.add_parser("status", help="show current sync status")
     subparsers.add_parser("auth", help="re-authenticate with Google")
@@ -219,6 +396,7 @@ def main() -> int:
         return cmd_version(args)
 
     commands = {
+        "setup": cmd_setup,
         "sync": cmd_sync,
         "status": cmd_status,
         "auth": cmd_auth,
