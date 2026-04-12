@@ -78,8 +78,12 @@ class Settings:
                 json.dumps(self._data, indent=2, ensure_ascii=False) + "\n",
                 encoding="utf-8",
             )
-            # Restrict permissions: owner read/write only (not world-readable)
-            tmp_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
+            # Restrict permissions: owner read/write only (not world-readable).
+            # On Windows, chmod only controls the read-only flag and cannot
+            # restrict access to the owner, so we skip it there.  The file
+            # lives inside %APPDATA% which is already per-user.
+            if platform.system() != "Windows":
+                tmp_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
             tmp_path.replace(self._path)
         except OSError as exc:
             logger.error("Failed to save config to %s: %s", self._path, exc)
@@ -103,4 +107,9 @@ class Settings:
 
     @property
     def sync_interval_minutes(self) -> int:
-        return int(self._data.get("sync_interval_minutes", DEFAULT_SYNC_INTERVAL_MINUTES))  # type: ignore[arg-type]
+        value = self._data.get("sync_interval_minutes", DEFAULT_SYNC_INTERVAL_MINUTES)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.isdigit():
+            return int(value)
+        return DEFAULT_SYNC_INTERVAL_MINUTES

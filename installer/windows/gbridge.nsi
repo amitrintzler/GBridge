@@ -21,6 +21,8 @@ OutFile "..\..\dist\GBridge-Setup.exe"
 InstallDir "$PROGRAMFILES\${APPNAME}"
 InstallDirRegKey HKLM "Software\${APPNAME}" "Install_Dir"
 RequestExecutionLevel admin
+Icon "gbridge.ico"
+UninstallIcon "gbridge.ico"
 
 ;--------------------------------
 ; Pages
@@ -40,6 +42,9 @@ Section "Install"
   ; Copy the standalone exe
   File "..\..\dist\windows\gbridge.exe"
 
+  ; Copy the icon so shortcuts and Add/Remove Programs use it
+  File "gbridge.ico"
+
   ; Create config directory for the user
   CreateDirectory "$APPDATA\${APPNAME}"
 
@@ -48,13 +53,13 @@ Section "Install"
 
   ; Start Menu shortcuts
   CreateDirectory "$SMPROGRAMS\${APPNAME}"
-  CreateShortcut "$SMPROGRAMS\${APPNAME}\GBridge Setup Wizard.lnk" "$INSTDIR\gbridge.exe" "setup" "" "" "" "" "Set up GBridge (first time)"
-  CreateShortcut "$SMPROGRAMS\${APPNAME}\GBridge Sync.lnk" "$INSTDIR\gbridge.exe" "sync" "" "" "" "" "Sync Google with Outlook"
-  CreateShortcut "$SMPROGRAMS\${APPNAME}\GBridge Status.lnk" "$INSTDIR\gbridge.exe" "status" "" "" "" "" "Check sync status"
+  CreateShortcut "$SMPROGRAMS\${APPNAME}\GBridge Setup Wizard.lnk" "$INSTDIR\gbridge.exe" "setup" "$INSTDIR\gbridge.ico" "" "" "" "Set up GBridge (first time)"
+  CreateShortcut "$SMPROGRAMS\${APPNAME}\GBridge Sync.lnk" "$INSTDIR\gbridge.exe" "sync" "$INSTDIR\gbridge.ico" "" "" "" "Sync Google with Outlook"
+  CreateShortcut "$SMPROGRAMS\${APPNAME}\GBridge Status.lnk" "$INSTDIR\gbridge.exe" "status" "$INSTDIR\gbridge.ico" "" "" "" "Check sync status"
   CreateShortcut "$SMPROGRAMS\${APPNAME}\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 
   ; Desktop shortcut — runs the setup wizard on first use
-  CreateShortcut "$DESKTOP\GBridge.lnk" "$INSTDIR\gbridge.exe" "setup" "" "" "" "" "GBridge — Sync Google with Outlook"
+  CreateShortcut "$DESKTOP\GBridge.lnk" "$INSTDIR\gbridge.exe" "setup" "$INSTDIR\gbridge.ico" "" "" "" "GBridge — Sync Google with Outlook"
 
   ; Add to PATH
   EnVar::AddValue "PATH" "$INSTDIR"
@@ -65,6 +70,7 @@ Section "Install"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayVersion" "${VERSION}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "Publisher" "${COMPANYNAME}"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "HelpLink" "${HELPURL}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayIcon" "$INSTDIR\gbridge.ico"
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "EstimatedSize" ${INSTALLSIZE}
   WriteRegStr HKLM "Software\${APPNAME}" "Install_Dir" "$INSTDIR"
 
@@ -76,6 +82,7 @@ SectionEnd
 Section "Uninstall"
   ; Remove files
   Delete "$INSTDIR\gbridge.exe"
+  Delete "$INSTDIR\gbridge.ico"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
 

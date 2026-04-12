@@ -142,8 +142,12 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
     # Step 5: Done
     _print("\n[Step 5/5] Outlook detection...")
-    from gbridge.outlook.detect import detect_outlook
+    from gbridge.outlook.detect import detect_outlook, paths_read_for_current_os
 
+    _print("  GBridge will READ (never write) these locations to find Outlook:")
+    for path in paths_read_for_current_os():
+        _print(f"    - {path}")
+    _print()
     outlook = detect_outlook()
     if outlook.value == "m365":
         _print("  Microsoft 365 detected — will sync via Graph API (Phase 2)")
@@ -290,11 +294,11 @@ def cmd_sync(args: argparse.Namespace) -> int:
             f"  ({stats.new} new, {stats.updated} updated, {stats.unchanged} unchanged)"
         )
 
-    # Step 5: Outlook detection info
+    # Step 5: Outlook detection info (read-only inspection of the system)
     from gbridge.outlook.detect import detect_outlook
 
     outlook = detect_outlook()
-    _print(f"\n  Outlook: {outlook.value}")
+    _print(f"\n  Outlook: {outlook.value}  (detected via read-only system lookup)")
     if outlook.value == "not_found":
         _print("  (Outlook write-back will be available in Phase 2)")
 
@@ -376,6 +380,61 @@ def cmd_version(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_daemon(args: argparse.Namespace) -> int:
+    """Run GBridge as a background service (scheduler + tray + notifications)."""
+    _print(f"GBridge v{__version__} — daemon")
+    _print("Running in the background.  Ctrl+C to stop.")
+    from gbridge.daemon import run_daemon
+
+    return run_daemon()
+
+
+def cmd_autostart(args: argparse.Namespace) -> int:
+    """Install / remove / check OS-level auto-start on login."""
+    from gbridge.service import get_installer
+
+    installer = get_installer()
+    action = getattr(args, "autostart_action", "status")
+
+    if action == "install":
+        exe_path = sys.executable
+        if not getattr(sys, "frozen", False):
+            # Source install — prefer the 'gbridge' console script
+            import shutil
+
+            found = shutil.which("gbridge")
+            if found:
+                exe_path = found
+        _print("GBridge autostart — installing")
+        _print(f"  Writing: {installer.location()}")
+        _print(f"  Command: {exe_path} daemon")
+        _print("  This will run GBridge on login.  You can remove it with")
+        _print("  'gbridge autostart remove' at any time.")
+        installer.install(exe_path)
+        _print("  Installed.")
+        return 0
+
+    if action == "remove":
+        if installer.uninstall():
+            _print(f"Removed autostart entry: {installer.location()}")
+            return 0
+        _print("Autostart was not installed — nothing to remove.")
+        return 0
+
+    # status (default)
+    state = "installed" if installer.is_installed() else "not installed"
+    _print(f"GBridge autostart: {state}")
+    _print(f"  Location: {installer.location()}")
+    return 0
+
+
+def cmd_gui(args: argparse.Namespace) -> int:
+    """Launch the Tkinter setup wizard."""
+    from gbridge.gui.wizard import run_gui
+
+    return run_gui()
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the CLI argument parser."""
     parser = argparse.ArgumentParser(
@@ -388,11 +447,31 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers(dest="command")
 
-    subparsers.add_parser("setup", help="one-click setup wizard (start here!)")
+    setup_p = subparsers.add_parser(
+        "setup", help="one-click setup wizard (start here!)"
+    )
+    setup_p.add_argument(
+        "--gui", action="store_true", help="launch the Tkinter GUI wizard"
+    )
     subparsers.add_parser("sync", help="run a sync cycle (default)")
     subparsers.add_parser("status", help="show current sync status")
     subparsers.add_parser("auth", help="re-authenticate with Google")
     subparsers.add_parser("version", help="show version info")
+    subparsers.add_parser(
+        "daemon",
+        help="run GBridge in the background (scheduler + tray + notifications)",
+    )
+    autostart_p = subparsers.add_parser(
+        "autostart", help="install / remove auto-start on login"
+    )
+    autostart_p.add_argument(
+        "autostart_action",
+        choices=["install", "remove", "status"],
+        nargs="?",
+        default="status",
+        help="'install', 'remove', or 'status' (default: status)",
+    )
+    subparsers.add_parser("gui", help="launch the Tkinter GUI wizard")
 
     return parser
 
@@ -411,7 +490,14 @@ def main() -> int:
         "status": cmd_status,
         "auth": cmd_auth,
         "version": cmd_version,
+        "daemon": cmd_daemon,
+        "autostart": cmd_autostart,
+        "gui": cmd_gui,
     }
+
+    # --gui on the setup command redirects to the Tk wizard
+    if args.command == "setup" and getattr(args, "gui", False):
+        return cmd_gui(args)
 
     command = args.command or "sync"
     handler = commands.get(command, cmd_sync)
