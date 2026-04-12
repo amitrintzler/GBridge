@@ -1,3 +1,9 @@
+# The winreg module is Windows-only in typeshed, so mypy on non-Windows
+# platforms cannot verify attribute access on it.  We silence attr-defined
+# errors for this file only — every winreg call is guarded by platform
+# checks at runtime, so there is nothing meaningful for mypy to help with
+# from a non-Windows host.
+# mypy: disable-error-code="attr-defined"
 """Outlook installation and type detection.
 
 Determines whether the user has:

@@ -107,4 +107,9 @@ class Settings:
 
     @property
     def sync_interval_minutes(self) -> int:
-        return int(self._data.get("sync_interval_minutes", DEFAULT_SYNC_INTERVAL_MINUTES))  # type: ignore[arg-type]
+        value = self._data.get("sync_interval_minutes", DEFAULT_SYNC_INTERVAL_MINUTES)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.isdigit():
+            return int(value)
+        return DEFAULT_SYNC_INTERVAL_MINUTES
