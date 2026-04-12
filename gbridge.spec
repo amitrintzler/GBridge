@@ -98,5 +98,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # TODO: add icon in Phase 2
+    icon="installer/windows/gbridge.ico",
 )
