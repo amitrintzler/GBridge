@@ -142,8 +142,12 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
     # Step 5: Done
     _print("\n[Step 5/5] Outlook detection...")
-    from gbridge.outlook.detect import detect_outlook
+    from gbridge.outlook.detect import detect_outlook, paths_read_for_current_os
 
+    _print("  GBridge will READ (never write) these locations to find Outlook:")
+    for path in paths_read_for_current_os():
+        _print(f"    - {path}")
+    _print()
     outlook = detect_outlook()
     if outlook.value == "m365":
         _print("  Microsoft 365 detected — will sync via Graph API (Phase 2)")
@@ -290,11 +294,11 @@ def cmd_sync(args: argparse.Namespace) -> int:
             f"  ({stats.new} new, {stats.updated} updated, {stats.unchanged} unchanged)"
         )
 
-    # Step 5: Outlook detection info
+    # Step 5: Outlook detection info (read-only inspection of the system)
     from gbridge.outlook.detect import detect_outlook
 
     outlook = detect_outlook()
-    _print(f"\n  Outlook: {outlook.value}")
+    _print(f"\n  Outlook: {outlook.value}  (detected via read-only system lookup)")
     if outlook.value == "not_found":
         _print("  (Outlook write-back will be available in Phase 2)")
 

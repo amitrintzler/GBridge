@@ -8,6 +8,10 @@ Determines whether the user has:
 This detection runs once at first launch and caches the result.
 It only *reads* system state — never modifies any Outlook settings,
 profiles, or registry keys.
+
+Transparency: the exact registry keys / file paths that GBridge
+inspects on each OS are exposed as module-level constants so the
+setup wizard can show users what will be read before detection runs.
 """
 
 from __future__ import annotations
@@ -18,6 +22,40 @@ import shutil
 from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+# Registry paths GBridge reads on Windows.  READ-ONLY — nothing is
+# ever written or modified.  Exposed for the setup wizard so the user
+# can see exactly what will be inspected.
+WINDOWS_REGISTRY_PATHS_READ: tuple[str, ...] = (
+    r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\OUTLOOK.EXE",
+    r"HKCU\SOFTWARE\Microsoft\Office  (enumerates version subkeys)",
+    r"HKCU\SOFTWARE\Microsoft\Office\<version>\Outlook\Profiles",
+)
+
+# Filesystem / preferences paths GBridge reads on macOS.  READ-ONLY.
+MACOS_PATHS_READ: tuple[str, ...] = (
+    "/Applications/Microsoft Outlook.app  (existence check only)",
+    "defaults read com.microsoft.Outlook Accounts  (user preferences)",
+)
+
+# Paths GBridge checks on Linux.  READ-ONLY.
+LINUX_PATHS_READ: tuple[str, ...] = (
+    "$PATH lookup for 'outlook' command",
+)
+
+
+def paths_read_for_current_os() -> tuple[str, ...]:
+    """Return the paths/keys GBridge will read on the current OS.
+
+    Intended for transparency: the setup wizard prints this list so
+    users can verify what GBridge inspects before detection runs.
+    """
+    system = platform.system()
+    if system == "Windows":
+        return WINDOWS_REGISTRY_PATHS_READ
+    if system == "Darwin":
+        return MACOS_PATHS_READ
+    return LINUX_PATHS_READ
 
 
 class OutlookType(Enum):
@@ -45,54 +83,101 @@ def detect_outlook() -> OutlookType:
 
 
 def _detect_windows() -> OutlookType:
-    """Detect Outlook on Windows by inspecting the registry (read-only)."""
+    """Detect Outlook on Windows by inspecting the registry (read-only).
+
+    Enumerates all installed Office versions rather than hardcoding
+    16.0, so Outlook 2013 (15.0), 2016/2019/2021/365 (16.0), and
+    future versions are all detected.  Every registry path that is
+    opened is logged for transparency.
+    """
     try:
         import winreg  # noqa: F811
+    except ImportError:
+        # winreg not available (shouldn't happen on Windows)
+        logger.warning("winreg module not available on Windows")
+        return OutlookType.NOT_FOUND
 
-        # Check if Outlook is installed by looking for the application path
-        try:
-            key = winreg.OpenKey(
-                winreg.HKEY_LOCAL_MACHINE,
-                r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\OUTLOOK.EXE",
-                access=winreg.KEY_READ,
-            )
-            winreg.CloseKey(key)
-        except FileNotFoundError:
-            logger.info("Outlook not found in Windows registry")
-            return OutlookType.NOT_FOUND
+    # Step 1: is Outlook installed at all?
+    app_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\OUTLOOK.EXE"
+    logger.info("Reading registry (read-only): HKLM\\%s", app_path)
+    try:
+        key = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE, app_path, access=winreg.KEY_READ
+        )
+        winreg.CloseKey(key)
+    except FileNotFoundError:
+        logger.info("Outlook not found in Windows registry")
+        return OutlookType.NOT_FOUND
 
-        # Check for Exchange/M365 account in Outlook profiles
-        # Look under the default profile for Exchange account entries
-        profile_key_path = r"SOFTWARE\Microsoft\Office\16.0\Outlook\Profiles"
+    # Step 2: check each installed Office version for an Exchange profile
+    office_root = r"SOFTWARE\Microsoft\Office"
+    for version in _enumerate_office_versions(office_root):
+        profile_key_path = rf"{office_root}\{version}\Outlook\Profiles"
+        logger.info("Reading registry (read-only): HKCU\\%s", profile_key_path)
         try:
             profiles_key = winreg.OpenKey(
                 winreg.HKEY_CURRENT_USER,
                 profile_key_path,
                 access=winreg.KEY_READ,
             )
-            # Enumerate profile subkeys
+        except FileNotFoundError:
+            continue
+
+        try:
             i = 0
             while True:
                 try:
                     profile_name = winreg.EnumKey(profiles_key, i)
                     if _windows_profile_has_exchange(profile_key_path, profile_name):
-                        winreg.CloseKey(profiles_key)
-                        logger.info("Detected Microsoft 365 / Exchange Outlook")
+                        logger.info(
+                            "Detected Microsoft 365 / Exchange Outlook (Office %s)",
+                            version,
+                        )
                         return OutlookType.M365
                     i += 1
                 except OSError:
                     break
+        finally:
             winreg.CloseKey(profiles_key)
-        except FileNotFoundError:
-            pass
 
-        logger.info("Detected standalone Outlook (no Exchange account)")
-        return OutlookType.STANDALONE
+    logger.info("Detected standalone Outlook (no Exchange account)")
+    return OutlookType.STANDALONE
 
+
+def _enumerate_office_versions(office_root: str) -> list[str]:
+    """Return installed Office version subkeys (e.g. ['15.0', '16.0']).
+
+    Reads HKCU\\SOFTWARE\\Microsoft\\Office and returns any subkey
+    whose name starts with a digit — these are the version folders
+    (15.0, 16.0, 17.0 …).  Read-only.
+    """
+    try:
+        import winreg
     except ImportError:
-        # winreg not available (shouldn't happen on Windows)
-        logger.warning("winreg module not available on Windows")
-        return OutlookType.NOT_FOUND
+        return []
+
+    logger.info("Reading registry (read-only): HKCU\\%s  (enumerate versions)", office_root)
+    try:
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER, office_root, access=winreg.KEY_READ
+        )
+    except (FileNotFoundError, OSError):
+        return []
+
+    versions: list[str] = []
+    try:
+        i = 0
+        while True:
+            try:
+                name = winreg.EnumKey(key, i)
+                if name and name[0].isdigit():
+                    versions.append(name)
+                i += 1
+            except OSError:
+                break
+    finally:
+        winreg.CloseKey(key)
+    return versions
 
 
 def _windows_profile_has_exchange(profiles_path: str, profile_name: str) -> bool:
