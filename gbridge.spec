@@ -18,7 +18,9 @@ a = Analysis(
     ["src/gbridge/__main__.py"],
     pathex=[],
     binaries=[],
-    datas=[],
+    # Bundle the app icon so runtime features (toast notifications,
+    # system tray — Phase 3) can reference it via utils.resources.
+    datas=[("installer/windows/gbridge.ico", ".")],
     hiddenimports=[
         "gbridge",
         "gbridge.core",
