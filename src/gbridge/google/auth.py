@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import keyring
 from google.auth.transport.requests import Request
@@ -74,7 +74,9 @@ class GoogleAuthManager:
             scopes=self._scopes,
         )
         # port=0 picks an available ephemeral port — no fixed port conflicts
-        creds = flow.run_local_server(port=0, open_browser=True)
+        creds = cast(
+            "Credentials", flow.run_local_server(port=0, open_browser=True)
+        )
         self._save_token(creds)
         logger.info("Google authentication completed successfully")
         return creds
@@ -92,7 +94,10 @@ class GoogleAuthManager:
 
         try:
             data = json.loads(token_json)
-            return Credentials.from_authorized_user_info(data, self._scopes)
+            return cast(
+                "Credentials",
+                Credentials.from_authorized_user_info(data, self._scopes),
+            )
         except (json.JSONDecodeError, ValueError, KeyError) as exc:
             logger.warning("Stored token is invalid, will re-authenticate: %s", exc)
             return None
