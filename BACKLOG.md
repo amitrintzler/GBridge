@@ -33,15 +33,18 @@
 - [ ] Two-way sync conflict resolution
 - [ ] Deletion propagation (Google → Outlook)
 
-## Phase 3 — Background Service & UI
-- [ ] APScheduler integration (auto-sync every N minutes)
-- [ ] System tray icon (pystray)
-- [ ] Desktop notifications (plyer toasts)
-- [ ] Tkinter setup wizard (GUI replacement for CLI wizard)
-- [ ] Service installation:
-  - [ ] Windows: NSSM service
-  - [ ] macOS: launchd plist
-  - [ ] Linux: systemd unit
+## Phase 3 — Background Service & UI — DONE
+- [x] APScheduler integration (auto-sync every N minutes) — `utils/scheduler.py`
+- [x] System tray icon (pystray, lazy-imported) — `utils/tray.py`
+- [x] Desktop notifications (plyer toasts) — `utils/notify.py`
+- [x] Tkinter setup wizard (GUI wrapper over the CLI flow) — `gui/wizard.py`
+- [x] Daemon orchestrator that ties it all together — `daemon.py`
+- [x] Auto-start installation (user-level, no admin required):
+  - [x] Windows: HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run
+  - [x] macOS: ~/Library/LaunchAgents/io.gbridge.autosync.plist
+  - [x] Linux: ~/.config/systemd/user/gbridge.service
+- [x] CLI wiring: `gbridge daemon`, `gbridge autostart {install,remove,status}`,
+      `gbridge gui`, `gbridge setup --gui`
 
 ## Phase 4 — Packaging & Distribution
 - [ ] Test Windows .exe build on actual Windows machine
