@@ -22,3 +22,7 @@ venv/
 *.dmg
 *.deb
 *.rpm
+
+# Coverage + local Claude workspace
+.coverage
+.claude/

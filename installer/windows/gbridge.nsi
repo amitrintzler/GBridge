@@ -48,6 +48,22 @@ Section "Install"
   ; Create config directory for the user
   CreateDirectory "$APPDATA\${APPNAME}"
 
+  ; ---- Outlook CalDav Synchronizer (optional bundled addin) --------------
+  ; If OutlookCalDavSynchronizer.msi is placed next to this .nsi before
+  ; build, we install it silently for the standalone-Outlook DAV path.
+  ; GBridge still works without it (M365/Graph path doesn't need it).
+  !if /FileExists "vendor\OutlookCalDavSynchronizer.msi"
+    DetailPrint "Installing Outlook CalDav Synchronizer (bundled)"
+    File "/oname=OutlookCalDavSynchronizer.msi" "vendor\OutlookCalDavSynchronizer.msi"
+    ExecWait '"$SYSDIR\msiexec.exe" /i "$INSTDIR\OutlookCalDavSynchronizer.msi" /qn /norestart ALLUSERS=1' $0
+    ${If} $0 != 0
+      ${AndIf} $0 != 3010
+        DetailPrint "OCS MSI returned $0 (ignored; GBridge install continues)"
+    ${EndIf}
+  !else
+    DetailPrint "OutlookCalDavSynchronizer.msi not vendored — DAV path will need manual install"
+  !endif
+
   ; Write uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 

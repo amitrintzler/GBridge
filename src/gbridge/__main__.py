@@ -435,6 +435,219 @@ def cmd_gui(args: argparse.Namespace) -> int:
     return run_gui()
 
 
+# ---------------------------------------------------------------------------
+# Phase 2: Outlook + conflicts subcommands
+# ---------------------------------------------------------------------------
+
+
+def cmd_outlook(args: argparse.Namespace) -> int:
+    """Dispatch for ``gbridge outlook <auth|push|status>``."""
+    action = getattr(args, "outlook_action", None)
+    if action == "auth":
+        return cmd_outlook_auth(args)
+    if action == "push":
+        return cmd_outlook_push(args)
+    if action == "status":
+        return cmd_outlook_status(args)
+    _print("Usage: gbridge outlook {auth|push|status}")
+    return 2
+
+
+def cmd_outlook_auth(args: argparse.Namespace) -> int:
+    """Sign in (or re-sign-in) with Microsoft."""
+    from gbridge.microsoft.auth import MicrosoftAuthError, MicrosoftAuthManager
+
+    settings = Settings()
+    client_id = getattr(args, "client_id", None) or settings.microsoft_client_id
+    if not client_id:
+        _print(
+            "No Microsoft client_id configured.\n"
+            "Register an Azure app at https://portal.azure.com and run:\n"
+            "  gbridge outlook auth --client-id <YOUR_APP_GUID>"
+        )
+        return 1
+    if getattr(args, "client_id", None):
+        settings.set("microsoft_client_id", args.client_id)
+        settings.save()
+
+    _print(f"GBridge v{__version__} — Microsoft sign-in\n")
+    mgr = MicrosoftAuthManager(
+        client_id=client_id,
+        tenant_id=settings.microsoft_tenant_id,
+    )
+    try:
+        mgr.authenticate()
+    except MicrosoftAuthError as exc:
+        _print(f"Authentication failed: {exc}")
+        return 1
+    _print("Signed in to Microsoft — token cached in OS keychain.")
+    return 0
+
+
+def cmd_outlook_push(args: argparse.Namespace) -> int:
+    """Run a single push cycle (ledger -> Outlook)."""
+    from gbridge.core.ledger import SyncLedger
+
+    settings = Settings()
+    mode = settings.outlook_mode
+    if mode == "disabled":
+        _print("outlook_mode is 'disabled'. Set it to 'graph' or 'dav' in config.")
+        return 1
+
+    ledger = SyncLedger(settings.db_path)
+    try:
+        pusher = _build_cli_pusher(settings, ledger, mode, dry_run=getattr(args, "dry", False))
+        if pusher is None:
+            return 1
+        results = pusher.run_push()
+    finally:
+        ledger.close()
+
+    for rtype, stats in results.items():
+        _print(
+            f"  {rtype:10s} created={stats.created} updated={stats.updated} "
+            f"unchanged={stats.unchanged} conflicts={stats.conflicts} "
+            f"failed={stats.failed}"
+        )
+    return 0
+
+
+def _build_cli_pusher(settings, ledger, mode, *, dry_run):
+    from gbridge.core.pusher import Pusher
+
+    if dry_run:
+        return Pusher(ledger, settings, mode="dry")
+    if mode == "graph":
+        from gbridge.microsoft.auth import (
+            MicrosoftAuthError,
+            MicrosoftAuthManager,
+        )
+        from gbridge.microsoft.graph_calendar import GraphCalendarService
+        from gbridge.microsoft.graph_people import GraphPeopleService
+        from gbridge.microsoft.graph_tasks import GraphTasksService
+
+        try:
+            ms_auth = MicrosoftAuthManager(
+                client_id=settings.microsoft_client_id,
+                tenant_id=settings.microsoft_tenant_id,
+            )
+            ms_auth.get_credentials()
+        except MicrosoftAuthError as exc:
+            _print(f"Microsoft sign-in needed: {exc}")
+            return None
+        return Pusher(
+            ledger,
+            settings,
+            mode="graph",
+            people_svc=GraphPeopleService(ms_auth),
+            calendar_svc=GraphCalendarService(ms_auth),
+            tasks_svc=GraphTasksService(ms_auth),
+        )
+    if mode == "dav":
+        from gbridge.config.settings import get_data_dir
+        from gbridge.dav.server import make_config
+        from gbridge.dav.storage import DavProjector
+
+        cfg = make_config(
+            host=settings.dav_host, port=settings.dav_port,
+            data_dir=get_data_dir(),
+        )
+        return Pusher(ledger, settings, mode="dav", projector=DavProjector(cfg.storage_dir))
+    return None
+
+
+def cmd_outlook_status(args: argparse.Namespace) -> int:
+    """Report Outlook sync state: mode, conflicts, ledger pushed counts."""
+    from gbridge.core import conflicts as conflicts_module
+    from gbridge.core.ledger import SyncLedger
+
+    settings = Settings()
+    _print(f"GBridge v{__version__} — Outlook status\n")
+    _print(f"  Mode: {settings.outlook_mode}")
+    _print(f"  Push interval: {settings.push_interval_minutes} min")
+    if settings.outlook_mode == "dav":
+        _print(f"  DAV server: http://{settings.dav_host}:{settings.dav_port}/")
+
+    if not settings.db_path.exists():
+        _print("  No ledger yet — run 'gbridge sync' first.")
+        return 0
+
+    ledger = SyncLedger(settings.db_path)
+    try:
+        pushed = {
+            "contacts": sum(1 for r in ledger.list_items("contact") if r.outlook_id),
+            "events": sum(1 for r in ledger.list_items("event") if r.outlook_id),
+            "tasks": sum(1 for r in ledger.list_items("task") if r.outlook_id),
+        }
+        pending = conflicts_module.count_unresolved(ledger)
+    finally:
+        ledger.close()
+
+    _print("\n  Pushed to Outlook:")
+    for k, v in pushed.items():
+        _print(f"    {k:10s} {v}")
+    _print(f"\n  Pending conflicts: {pending}")
+    return 0
+
+
+def cmd_conflicts(args: argparse.Namespace) -> int:
+    """Dispatch for ``gbridge conflicts <list|resolve>``."""
+    action = getattr(args, "conflicts_action", None)
+    if action == "list":
+        return cmd_conflicts_list(args)
+    if action == "resolve":
+        return cmd_conflicts_resolve(args)
+    _print("Usage: gbridge conflicts {list|resolve}")
+    return 2
+
+
+def cmd_conflicts_list(args: argparse.Namespace) -> int:
+    from gbridge.core import conflicts as conflicts_module
+    from gbridge.core.ledger import SyncLedger
+
+    settings = Settings()
+    ledger = SyncLedger(settings.db_path)
+    try:
+        rows = conflicts_module.list_conflicts(ledger, unresolved_only=True)
+    finally:
+        ledger.close()
+    if not rows:
+        _print("No pending conflicts.")
+        return 0
+    _print(f"{len(rows)} pending conflict(s):\n")
+    for row in rows:
+        _print(f"  #{row.id:>4d}  {row.item_type:>8s}  {row.google_id}")
+        _print(
+            f"         detected {row.detected_at}  "
+            f"google_hash={row.google_hash[:8]}…  "
+            f"outlook_hash={row.outlook_hash[:8]}…"
+        )
+    _print("\nResolve with: gbridge conflicts resolve <id> --winner google|outlook")
+    return 0
+
+
+def cmd_conflicts_resolve(args: argparse.Namespace) -> int:
+    from gbridge.core import conflicts as conflicts_module
+    from gbridge.core.ledger import SyncLedger
+
+    settings = Settings()
+    ledger = SyncLedger(settings.db_path)
+    try:
+        ok = conflicts_module.resolve_conflict(
+            ledger, args.conflict_id, args.winner
+        )
+    finally:
+        ledger.close()
+    if ok:
+        _print(f"Conflict #{args.conflict_id} resolved; winner={args.winner}")
+        return 0
+    _print(
+        f"No unresolved conflict with id {args.conflict_id} "
+        "(may be already resolved or not found)."
+    )
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the CLI argument parser."""
     parser = argparse.ArgumentParser(
@@ -473,6 +686,43 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers.add_parser("gui", help="launch the Tkinter GUI wizard")
 
+    # Phase 2 — Outlook + conflicts
+    outlook_p = subparsers.add_parser(
+        "outlook", help="manage Outlook write-back (Phase 2)"
+    )
+    outlook_sub = outlook_p.add_subparsers(dest="outlook_action")
+    out_auth = outlook_sub.add_parser(
+        "auth", help="sign in to Microsoft (MSAL)"
+    )
+    out_auth.add_argument(
+        "--client-id",
+        help="Azure public-client ID; saved to settings when provided",
+    )
+    out_push_p = outlook_sub.add_parser(
+        "push", help="run a push cycle (ledger -> Outlook)"
+    )
+    out_push_p.add_argument(
+        "--dry", action="store_true",
+        help="classify but do not write",
+    )
+    outlook_sub.add_parser("status", help="show current Outlook state")
+
+    conflicts_p = subparsers.add_parser(
+        "conflicts", help="manage pending Outlook conflicts"
+    )
+    conflicts_sub = conflicts_p.add_subparsers(dest="conflicts_action")
+    conflicts_sub.add_parser("list", help="list unresolved conflicts")
+    resolve_p = conflicts_sub.add_parser(
+        "resolve", help="resolve a conflict by id"
+    )
+    resolve_p.add_argument("conflict_id", type=int, help="conflict id from 'conflicts list'")
+    resolve_p.add_argument(
+        "--winner",
+        required=True,
+        choices=["google", "outlook"],
+        help="which side wins",
+    )
+
     return parser
 
 
@@ -493,6 +743,8 @@ def main() -> int:
         "daemon": cmd_daemon,
         "autostart": cmd_autostart,
         "gui": cmd_gui,
+        "outlook": cmd_outlook,
+        "conflicts": cmd_conflicts,
     }
 
     # --gui on the setup command redirects to the Tk wizard

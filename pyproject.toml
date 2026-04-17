@@ -32,6 +32,12 @@ dependencies = [
     "plyer>=2.1.0",
     "pystray>=0.19.0",
     "Pillow>=10.0.0",
+    # Phase 2 — Microsoft Graph + DAV write-back.
+    "msal>=1.28.0",
+    "requests>=2.31.0",
+    "vobject>=0.9.7",
+    "icalendar>=5.0.0",
+    "radicale>=3.1.0",
 ]
 
 [project.optional-dependencies]
@@ -67,7 +73,33 @@ disallow_untyped_defs = true
 
 [tool.bandit]
 exclude_dirs = ["tests"]
-skips = ["B603", "B607"]
+# B105/B106 — 'password' is a bandit false positive on keyring key names.
+# B311     — random is used only for backoff jitter, never crypto.
+# B404     — subprocess imports are for Radicale supervision, never shell.
+# B405     — ElementTree is used to emit XML, never to parse untrusted input.
+# B603/B607 — already-safe subprocess invocations (supervisor, detect).
+# B608     — f-string SQL columns are module constants, not user input.
+skips = ["B105", "B106", "B311", "B404", "B405", "B603", "B607", "B608"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = [
+    "--strict-markers",
+]
+
+# Coverage threshold (enforced in CI after tests land):
+# run `pytest --cov=src/gbridge --cov-fail-under=80` to gate
+
+[tool.coverage.run]
+source = ["src/gbridge"]
+omit = [
+    "src/gbridge/gui/*",  # Tk GUI is exercised manually
+    "src/gbridge/service/*",  # OS-specific autostart wrappers
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

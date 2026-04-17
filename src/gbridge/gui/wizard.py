@@ -68,6 +68,29 @@ def _run_setup_steps(
             total = stats.new + stats.updated + stats.unchanged
             log.put(f"  {rtype}: {total} items ({stats.new} new)")
 
+        # Step 4 (optional): Microsoft sign-in if a client_id is configured.
+        if settings.microsoft_client_id:
+            log.put("Microsoft client_id present — starting Microsoft sign-in...")
+            try:
+                from gbridge.microsoft.auth import (
+                    MicrosoftAuthError,
+                    MicrosoftAuthManager,
+                )
+
+                mgr = MicrosoftAuthManager(
+                    client_id=settings.microsoft_client_id,
+                    tenant_id=settings.microsoft_tenant_id,
+                )
+                mgr.authenticate()
+                log.put("Microsoft sign-in complete.")
+            except MicrosoftAuthError as exc:
+                log.put(f"Microsoft sign-in skipped: {exc}")
+        else:
+            log.put(
+                "Microsoft: not configured yet. To enable Outlook write-back "
+                "later, run `gbridge outlook auth --client-id <YOUR_GUID>`."
+            )
+
         log.put("Setup complete.  Nothing was sent to Google.")
         return 0
     except Exception as exc:  # noqa: BLE001

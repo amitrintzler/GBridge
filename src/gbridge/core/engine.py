@@ -52,18 +52,36 @@ class SyncEngine:
         self._ledger = ledger
         self._auth = auth
         self._settings = settings
+        # Populated by run_sync so a downstream Pusher can reuse the fetched
+        # models without a second round-trip to Google.
+        self.last_contacts: list[GoogleContact] = []
+        self.last_events: list[GoogleEvent] = []
+        self.last_tasks: list[GoogleTask] = []
 
     def run_sync(self) -> dict[str, SyncStats]:
         """Run a full sync cycle for all resource types.
 
         Returns a dict mapping resource type to its sync statistics.
+
+        Partial-sync resume: before each resource type we write a
+        checkpoint into sync_state so that if the process dies mid-cycle
+        the next run can log which phase was incomplete. The checkpoint
+        is cleared on successful completion.
         """
         creds = self._auth.get_credentials()
         results: dict[str, SyncStats] = {}
 
-        results["contacts"] = self._sync_contacts(PeopleService(creds))
-        results["events"] = self._sync_events(CalendarService(creds))
-        results["tasks"] = self._sync_tasks(TasksService(creds))
+        self._note_interrupted_previous_run()
+
+        for phase_label, phase_fn in (
+            ("contacts", lambda: self._sync_contacts(PeopleService(creds))),
+            ("events", lambda: self._sync_events(CalendarService(creds))),
+            ("tasks", lambda: self._sync_tasks(TasksService(creds))),
+        ):
+            self._ledger.set_sync_state("sync_phase", phase_label)
+            results[phase_label] = phase_fn()
+
+        self._ledger.set_sync_state("sync_phase", "")
 
         for rtype, stats in results.items():
             logger.info(
@@ -77,10 +95,20 @@ class SyncEngine:
 
         return results
 
+    def _note_interrupted_previous_run(self) -> None:
+        prev = self._ledger.get_sync_state("sync_phase") or ""
+        if prev:
+            logger.warning(
+                "Previous sync was interrupted during '%s' phase; "
+                "resuming with a full cycle (delta tokens still valid)",
+                prev,
+            )
+
     def _sync_contacts(self, people_svc: PeopleService) -> SyncStats:
         sync_token = self._ledger.get_sync_state("people_sync_token")
         result = people_svc.fetch_all(sync_token=sync_token)
 
+        self.last_contacts = list(result.items)
         stats = self._process_items("contact", result.items)
 
         # Handle deletions from delta sync
@@ -96,6 +124,12 @@ class SyncEngine:
     def _sync_events(self, calendar_svc: CalendarService) -> SyncStats:
         total_stats = SyncStats()
         calendars = calendar_svc.list_calendars()
+        enabled = set(self._settings.get("enabled_calendars") or [])  # type: ignore[arg-type]
+        if enabled:
+            calendars = [c for c in calendars if c["id"] in enabled]
+            logger.info("Syncing %d of %d calendars (user-selected)",
+                        len(calendars), len(enabled))
+        collected_events: list[GoogleEvent] = []
 
         for cal in calendars:
             cal_id = cal["id"]
@@ -103,6 +137,7 @@ class SyncEngine:
             sync_token = self._ledger.get_sync_state(state_key)
 
             result = calendar_svc.fetch_events(cal_id, sync_token=sync_token)
+            collected_events.extend(result.items)
             stats = self._process_items("event", result.items, google_parent_id=cal_id)
 
             for event_id in result.deleted_event_ids:
@@ -117,11 +152,18 @@ class SyncEngine:
             total_stats.unchanged += stats.unchanged
             total_stats.deleted += stats.deleted
 
+        self.last_events = collected_events
         return total_stats
 
     def _sync_tasks(self, tasks_svc: TasksService) -> SyncStats:
         total_stats = SyncStats()
         tasklists = tasks_svc.list_tasklists()
+        enabled = set(self._settings.get("enabled_tasklists") or [])  # type: ignore[arg-type]
+        if enabled:
+            tasklists = [tl for tl in tasklists if tl["id"] in enabled]
+            logger.info("Syncing %d of %d tasklists (user-selected)",
+                        len(tasklists), len(enabled))
+        collected_tasks: list[GoogleTask] = []
 
         for tl in tasklists:
             tl_id = tl["id"]
@@ -129,6 +171,7 @@ class SyncEngine:
             updated_min = self._ledger.get_sync_state(state_key)
 
             tasks = tasks_svc.fetch_tasks(tl_id, updated_min=updated_min)
+            collected_tasks.extend(tasks)
             stats = self._process_items("task", tasks, google_parent_id=tl_id)
 
             # Track the latest 'updated' timestamp for next delta
@@ -140,6 +183,7 @@ class SyncEngine:
             total_stats.updated += stats.updated
             total_stats.unchanged += stats.unchanged
 
+        self.last_tasks = collected_tasks
         return total_stats
 
     def _process_items(

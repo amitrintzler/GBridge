@@ -122,3 +122,54 @@ class TestGoogleAuthManager:
     ) -> None:
         auth_manager.revoke()
         mock_keyring.delete_password.assert_called_once_with("gbridge", "google_credentials")
+
+    @patch("gbridge.google.auth.keyring")
+    def test_load_token_swallows_keyring_errors(
+        self, mock_keyring: MagicMock, auth_manager: GoogleAuthManager
+    ) -> None:
+        mock_keyring.get_password.side_effect = RuntimeError("locked")
+        assert auth_manager._load_token() is None
+
+    @patch("gbridge.google.auth.keyring")
+    def test_save_token_bubbles_up_keyring_error(
+        self, mock_keyring: MagicMock, auth_manager: GoogleAuthManager
+    ) -> None:
+        mock_keyring.set_password.side_effect = RuntimeError("nope")
+        mock_creds = MagicMock()
+        mock_creds.token = "t"
+        mock_creds.refresh_token = "r"
+        mock_creds.token_uri = "u"
+        mock_creds.client_id = "c"
+        mock_creds.client_secret = "s"
+        mock_creds.scopes = []
+        with pytest.raises(RuntimeError):
+            auth_manager._save_token(mock_creds)
+
+    @patch("gbridge.google.auth.keyring")
+    @patch("gbridge.google.auth.Request")
+    def test_get_credentials_falls_back_on_refresh_failure(
+        self,
+        mock_request: MagicMock,
+        mock_keyring: MagicMock,
+        auth_manager: GoogleAuthManager,
+    ) -> None:
+        mock_creds = MagicMock()
+        mock_creds.valid = False
+        mock_creds.expired = True
+        mock_creds.refresh_token = "refresh"
+        mock_creds.refresh.side_effect = RuntimeError("token revoked")
+
+        with patch.object(auth_manager, "_load_token", return_value=mock_creds), \
+             patch.object(auth_manager, "authenticate", return_value="NEW") as auth_fn:
+            result = auth_manager.get_credentials()
+        auth_fn.assert_called_once()
+        assert result == "NEW"
+
+    @patch("gbridge.google.auth.keyring")
+    def test_revoke_is_quiet_when_nothing_stored(
+        self, mock_keyring: MagicMock, auth_manager: GoogleAuthManager
+    ) -> None:
+        import keyring.errors
+        mock_keyring.errors = keyring.errors
+        mock_keyring.delete_password.side_effect = keyring.errors.PasswordDeleteError
+        auth_manager.revoke()  # no exception

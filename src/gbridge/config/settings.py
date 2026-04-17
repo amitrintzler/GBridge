@@ -9,7 +9,17 @@ import platform
 import stat
 from pathlib import Path
 
-from gbridge.config.defaults import APP_NAME, DEFAULT_DB_NAME, DEFAULT_SYNC_INTERVAL_MINUTES
+from gbridge.config.defaults import (
+    APP_NAME,
+    DAV_HOST,
+    DAV_PORT,
+    DEFAULT_DB_NAME,
+    DEFAULT_OUTLOOK_MODE,
+    DEFAULT_PUSH_INTERVAL_MINUTES,
+    DEFAULT_SYNC_INTERVAL_MINUTES,
+    MICROSOFT_DEFAULT_TENANT,
+    MICROSOFT_PUBLIC_CLIENT_ID,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +29,13 @@ _DEFAULT_CONFIG: dict[str, object] = {
     "google_client_secrets_file": "client_secret.json",
     "enabled_calendars": [],
     "enabled_tasklists": [],
+    # Phase 2 — Microsoft / Outlook write-back.
+    "microsoft_client_id": MICROSOFT_PUBLIC_CLIENT_ID or "",
+    "microsoft_tenant_id": MICROSOFT_DEFAULT_TENANT,
+    "outlook_mode": DEFAULT_OUTLOOK_MODE,
+    "push_interval_minutes": DEFAULT_PUSH_INTERVAL_MINUTES,
+    "dav_host": DAV_HOST,
+    "dav_port": DAV_PORT,
 }
 
 
@@ -113,3 +130,49 @@ class Settings:
         if isinstance(value, str) and value.isdigit():
             return int(value)
         return DEFAULT_SYNC_INTERVAL_MINUTES
+
+    # ---- Phase 2 accessors -------------------------------------------------
+
+    @property
+    def microsoft_client_id(self) -> str | None:
+        """Resolve Microsoft public client id: setting override > shipped default."""
+        override = str(self._data.get("microsoft_client_id", "")).strip()
+        if override:
+            return override
+        return MICROSOFT_PUBLIC_CLIENT_ID
+
+    @property
+    def microsoft_tenant_id(self) -> str:
+        value = self._data.get("microsoft_tenant_id", MICROSOFT_DEFAULT_TENANT)
+        return str(value) if value else MICROSOFT_DEFAULT_TENANT
+
+    @property
+    def outlook_mode(self) -> str:
+        """One of 'disabled' | 'graph' | 'dav'."""
+        value = str(self._data.get("outlook_mode", DEFAULT_OUTLOOK_MODE))
+        if value not in {"disabled", "graph", "dav"}:
+            logger.warning("Invalid outlook_mode %r — defaulting to 'disabled'", value)
+            return "disabled"
+        return value
+
+    @property
+    def push_interval_minutes(self) -> int:
+        value = self._data.get("push_interval_minutes", DEFAULT_PUSH_INTERVAL_MINUTES)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.isdigit():
+            return int(value)
+        return DEFAULT_PUSH_INTERVAL_MINUTES
+
+    @property
+    def dav_host(self) -> str:
+        return str(self._data.get("dav_host", DAV_HOST))
+
+    @property
+    def dav_port(self) -> int:
+        value = self._data.get("dav_port", DAV_PORT)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.isdigit():
+            return int(value)
+        return DAV_PORT
