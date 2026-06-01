@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/amitrintzler/GBridge/actions/workflows/ci.yml/badge.svg)](https://github.com/amitrintzler/GBridge/actions/workflows/ci.yml)
 [![Security](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml/badge.svg)](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml)
+[![Release](https://img.shields.io/github/v/release/amitrintzler/GBridge)](https://github.com/amitrintzler/GBridge/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/amitrintzler/GBridge/blob/main/LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Google Scopes: Read-Only](https://img.shields.io/badge/Google_Scopes-Read--Only-brightgreen.svg)](#safety-guarantees)
@@ -10,7 +11,7 @@
 
 **Sync your Google Contacts, Calendar, and Tasks with Microsoft Outlook.**
 
-GBridge is a free, open-source tool that keeps your Google and Outlook data in sync — automatically, securely, and without touching your existing data.
+GBridge is a free, open-source tool that keeps your Google and Outlook data in sync — automatically, securely, and without touching your existing data. It runs entirely on your computer; your data never leaves your machine.
 
 Created by **Amit Rintzler**.
 
@@ -35,12 +36,11 @@ graph LR
 
 **Why haven't Google or Microsoft fixed this?**
 
-- **Google killed Google Sync** on December 14, 2012. It used Exchange ActiveSync to let Outlook connect directly to Google — they shut it down for all consumer accounts. ([Ars Technica](https://arstechnica.com/information-technology/2012/12/google-drops-exchange-activesync-support-for-free-accounts/), [The Verge](https://www.theverge.com/2012/12/14/3767626/google-drops-exchange-activesync-support-gmail))
-- **Google also killed "Google Calendar Sync"** — their own desktop tool that synced Google Calendar with Outlook — discontinued in 2014. ([Google Support](https://support.google.com/calendar/answer/89955))
-- **Microsoft never built native Google sync into Outlook.** Their only option is a read-only calendar subscription (ICS) — no contacts, no tasks, no two-way sync. ([Microsoft Support](https://support.microsoft.com/en-us/office/see-your-google-calendar-in-outlook-c1dab514-0ad4-4811-824a-7d02c5e77126))
-- **Outlook desktop still doesn't support CalDAV/CardDAV** — the open standards that would make Google sync easy. Apple supports them natively. Microsoft chose not to.
-- **Neither company has any incentive to help you use the other's product.** Google wants you in Gmail. Microsoft wants you in Outlook. Keeping your data siloed keeps you locked in. (The EU recognized this — the [Digital Markets Act](https://digital-markets-act.ec.europa.eu/) specifically targets interoperability failures by tech gatekeepers.)
-- **Third-party "sync" tools exist, but they all have catches:**
+- **Google killed Google Sync** on December 14, 2012. ([Ars Technica](https://arstechnica.com/information-technology/2012/12/google-drops-exchange-activesync-support-for-free-accounts/), [The Verge](https://www.theverge.com/2012/12/14/3767626/google-drops-exchange-activesync-support-gmail))
+- **Google also killed "Google Calendar Sync"** in 2014. ([Google Support](https://support.google.com/calendar/answer/89955))
+- **Microsoft never built native Google sync into Outlook.** Their only option is a read-only calendar subscription — no contacts, no tasks, no real sync. ([Microsoft Support](https://support.microsoft.com/en-us/office/see-your-google-calendar-in-outlook-c1dab514-0ad4-4811-824a-7d02c5e77126))
+- **Outlook desktop still doesn't support CalDAV/CardDAV** — the open standards that would make this trivial. Apple supports them natively. Microsoft chose not to.
+- **Third-party tools exist, but all have catches:**
 
   | Tool | Price | Catches |
   |---|---|---|
@@ -49,9 +49,7 @@ graph LR
   | [gSyncit](https://www.gsyncit.com/) | $19.99 one-time | Windows-only, closed source |
   | [Sync2 Cloud](https://www.sync2.com/) | $49.95 one-time | Closed source, Windows-only |
 
-**The result?** Millions of non-technical users — like my father — are stuck manually copying contacts between their phone and work computer, missing calendar events because they're in the wrong app, or just giving up and accepting that their digital life is fragmented.
-
-**GBridge fixes this.** It's free, open source, runs on your computer (your data never touches our servers — we don't even have servers), and it works. That's it. No subscription, no cloud middleman, no lock-in.
+**GBridge fixes this.** Free, open source, runs on your computer, your data never touches our servers (we don't have any). No subscription, no cloud middleman, no lock-in.
 
 ```mermaid
 graph LR
@@ -61,7 +59,7 @@ graph LR
         B["🟠 GBridge\n(on your computer)"]
         O2["🔵 Outlook\nContacts\nCalendar\nTasks"]
         G2 -->|"Read-only\n(safe)"| B
-        B -->|"Write sync\n(Phase 2)"| O2
+        B -->|"Push sync\n(v0.1.0)"| O2
     end
 
     style G2 fill:#34a853,stroke:#1e8e3e,color:#fff,stroke-width:2px
@@ -71,141 +69,108 @@ graph LR
 
 ---
 
-## Download & Install (No Technical Knowledge Needed)
+## Download & Install
 
 ### Windows
 
 1. Download **`gbridge-windows.exe`** from the [Releases page](https://github.com/amitrintzler/GBridge/releases/latest)
-2. Double-click the downloaded file
-3. The setup wizard opens and walks you through everything
+2. Run it — no installation wizard needed, it's a self-contained executable
+3. In a terminal: `gbridge setup`
 
-**That's it. No Python, no terminal, no technical steps.**
+> **Note:** Windows may show a SmartScreen warning on first run (the binary is not yet code-signed). Click **"More info → Run anyway"** to proceed. See [#pending-work](#pending-work) for the code-signing roadmap.
 
 ### macOS
 
 1. Download **`gbridge-macos`** from the [Releases page](https://github.com/amitrintzler/GBridge/releases/latest)
-2. Open Terminal (search "Terminal" in Spotlight)
-3. Run: `chmod +x ~/Downloads/gbridge-macos && ~/Downloads/gbridge-macos setup`
+2. Open Terminal (Spotlight → "Terminal")
+3. Run:
+   ```bash
+   chmod +x ~/Downloads/gbridge-macos
+   ~/Downloads/gbridge-macos setup
+   ```
 
 ### Linux
 
 1. Download **`gbridge-linux`** from the [Releases page](https://github.com/amitrintzler/GBridge/releases/latest)
-2. Open Terminal
-3. Run: `chmod +x ~/Downloads/gbridge-linux && ~/Downloads/gbridge-linux setup`
+2. Open a terminal and run:
+   ```bash
+   chmod +x ~/Downloads/gbridge-linux
+   ~/Downloads/gbridge-linux setup
+   ```
+
+### Install from source (developers)
+
+```bash
+git clone https://github.com/amitrintzler/GBridge.git
+cd GBridge
+pip install -e ".[dev]"
+gbridge setup
+```
 
 ---
 
-## What Happens When You Run It
+## First-time Setup (5 minutes, once only)
 
-The setup wizard guides you through everything step by step:
+Run `gbridge setup`. The wizard walks you through:
 
-```
-GBridge v0.1.0 — Setup Wizard
+**Step 1 — Google credentials**
 
-========================================================
-  Welcome! This wizard will set up GBridge for you.
-  It takes about 5 minutes, and you only do it once.
-========================================================
-
-[Step 1/5] Checking Python version...
-  Python 3.12.0 — OK
-
-[Step 2/5] Google API credentials
-```
-
-If you haven't set up Google credentials yet, it shows you exactly what to click:
+You need a `client_secret.json` from the Google Cloud Console. The wizard opens the browser and guides you through exactly what to click:
 
 ```
   +----------------------------------------------------------+
   |  STEP A: Create a Google Cloud Project                   |
   +----------------------------------------------------------+
-  |                                                          |
   |  1. Go to: https://console.cloud.google.com              |
-  |                                                          |
-  |  2. Click the project dropdown at the top:               |
-  |     +---------------------------------------------+      |
-  |     | [v] Select a project          [NEW PROJECT] |      |
-  |     +---------------------------------------------+      |
-  |                                        ^^^^^^^^^^^       |
-  |                                    Click "NEW PROJECT"   |
-  |                                                          |
-  |  3. Name it "GBridge" and click CREATE                   |
+  |  2. Click [NEW PROJECT], name it "GBridge"               |
   +----------------------------------------------------------+
 
   +----------------------------------------------------------+
-  |  STEP B: Enable the 3 APIs                               |
+  |  STEP B: Enable 3 APIs                                   |
   +----------------------------------------------------------+
-  |                                                          |
-  |  In the search bar at the top, search for each API       |
-  |  and click ENABLE:                                       |
-  |                                                          |
-  |  +----------------------------------------------------+  |
-  |  | [Search] People API                                |  |
-  |  +----------------------------------------------------+  |
-  |     -> Click the result -> Click [ENABLE]                |
-  |                                                          |
-  |  Repeat for:                                             |
-  |     [x] People API                                       |
-  |     [x] Google Calendar API                              |
-  |     [x] Tasks API                                        |
+  |  Search and ENABLE each:                                 |
+  |    [x] People API                                        |
+  |    [x] Google Calendar API                               |
+  |    [x] Tasks API                                         |
   +----------------------------------------------------------+
 
   +----------------------------------------------------------+
   |  STEP C: Create OAuth Credentials                        |
   +----------------------------------------------------------+
-  |                                                          |
-  |  1. In the left sidebar, click:                          |
-  |     APIs & Services > Credentials                        |
-  |                                                          |
-  |  2. Click:  [+ CREATE CREDENTIALS]                       |
-  |             > OAuth client ID                            |
-  |                                                          |
-  |  3. If asked for consent screen:                         |
-  |     - Choose "External"                                  |
-  |     - App name: "GBridge"                                |
-  |     - Fill your email, click Save                        |
-  |                                                          |
-  |  4. Application type: [Desktop application]              |
-  |     Name: "GBridge"                                      |
-  |     Click [CREATE]                                       |
-  |                                                          |
-  |  5. On the popup, click:                                 |
-  |     +----------------------------------+                 |
-  |     |  [DOWNLOAD JSON]                 |                 |
-  |     +----------------------------------+                 |
-  |                                                          |
-  |  6. Rename the downloaded file to:                       |
-  |     client_secret.json                                   |
+  |  APIs & Services → Credentials → [+ CREATE CREDENTIALS] |
+  |  → OAuth client ID → Desktop application                 |
+  |  → [DOWNLOAD JSON] → rename to client_secret.json        |
+  |  → place in %APPDATA%\GBridge\ (Windows) or              |
+  |              ~/Library/Application Support/GBridge/ (Mac)|
   +----------------------------------------------------------+
 ```
 
-After you place the file and press ENTER, it finishes automatically:
+**Steps 2–5** run automatically:
 
 ```
-[Step 3/5] Signing in to Google...
-  Your browser will open. Sign in and click 'Allow'.
-  Authenticated — OK
-
-[Step 4/5] Running your first sync...
+[Step 2/5] Google API credentials ... Found — OK
+[Step 3/5] Signing in to Google ... (browser opens) ... Authenticated — OK
+[Step 4/5] Running your first sync ...
   Contacts       342 items synced
   Events         128 items synced
   Tasks           15 items synced
-
-[Step 5/5] Outlook detection...
-  No Outlook detected — Outlook sync coming in Phase 2
-
+[Step 5/5] Outlook detection ...
+  Microsoft 365 detected — ready for Outlook push
 ========================================================
   Setup complete! GBridge is ready.
 ========================================================
-
-  What you can do now:
-
-    gbridge          Run a sync (fetches latest from Google)
-    gbridge status   See what's in your local sync ledger
-    gbridge auth     Re-authenticate if needed
-
-  Your Google data was NOT modified. GBridge only reads.
 ```
+
+**Step 6 (optional) — Outlook write-back**
+
+To push Google data into Outlook you need a free Microsoft Azure app registration (one-time, 2 minutes):
+
+1. Go to [portal.azure.com](https://portal.azure.com) → **Azure Active Directory → App registrations → New registration**
+2. Name: `GBridge`, Supported account types: **Personal + work/school**, Redirect URI: `Public client/native` → `http://localhost`
+3. Copy the **Application (client) ID** (a GUID)
+4. Run: `gbridge outlook auth --client-id <YOUR_GUID>`
+
+After that: `gbridge outlook push` (or it runs automatically in the background via `gbridge daemon`).
 
 ---
 
@@ -220,48 +185,110 @@ graph TD
     end
 
     subgraph "🟠 GBridge (on your computer)"
-        A["🔑 OAuth 2.0\nAuthentication"]
-        E["⚙️ Sync Engine"]
-        H["🔒 SHA-256\nDiff Engine"]
-        L["💾 SQLite\nLedger"]
+        GA["🔑 Google OAuth 2.0\n(OS keychain)"]
+        E["⚙️ Sync Engine\n(SHA-256 diff)"]
+        L["💾 SQLite Ledger"]
+        PU["🚀 Push Engine\n(conflict-aware)"]
+        MA["🔑 Microsoft MSAL\n(OS keychain)"]
     end
 
     subgraph "🔵 Microsoft Outlook"
-        M365["☁️ Microsoft 365\n(Graph API)"]
-        OL["💻 Standalone Outlook\n(local DAV server)"]
+        M365["☁️ Microsoft 365\nGraph API"]
+        OL["💻 Standalone Outlook\nLocal DAV server"]
     end
 
     P -->|"read-only"| E
     C -->|"read-only"| E
     T -->|"read-only"| E
-    A -.->|"secure token\n(OS keychain)"| E
-    E --> H
-    H -->|"only changes"| L
-    L -.->|"Phase 2"| M365
-    L -.->|"Phase 2"| OL
+    GA -.->|"token"| E
+    E -->|"hash diff"| L
+    L --> PU
+    MA -.->|"token"| PU
+    PU -->|"Graph write"| M365
+    PU -->|".vcf/.ics"| OL
 
     style P fill:#34a853,stroke:#1e8e3e,color:#fff
     style C fill:#34a853,stroke:#1e8e3e,color:#fff
     style T fill:#34a853,stroke:#1e8e3e,color:#fff
-    style A fill:#ff6d00,stroke:#e65100,color:#fff
+    style GA fill:#ff6d00,stroke:#e65100,color:#fff
     style E fill:#ff6d00,stroke:#e65100,color:#fff
-    style H fill:#ff6d00,stroke:#e65100,color:#fff
     style L fill:#ff6d00,stroke:#e65100,color:#fff
+    style PU fill:#ff6d00,stroke:#e65100,color:#fff
+    style MA fill:#ff6d00,stroke:#e65100,color:#fff
     style M365 fill:#0078d4,stroke:#005a9e,color:#fff
     style OL fill:#0078d4,stroke:#005a9e,color:#fff
 ```
 
-**Phase 1** (current): Reads from Google, detects changes, saves locally.
-**Phase 2** (next): Writes to Outlook — either via Microsoft Graph API (M365) or a local DAV server (standalone Outlook).
+**How the sync works:**
+1. GBridge reads your Google data (read-only scopes — cannot modify anything in Google)
+2. Each item is fingerprinted with SHA-256; only real changes are recorded in the local SQLite ledger
+3. The push engine compares the ledger against what's in Outlook and writes only the differences
+4. If the same item was edited in both Google and Outlook since the last push, a **conflict** is recorded — you pick the winner via the tray menu or CLI
 
-## Key Features
+**Two Outlook paths:**
+- **Microsoft 365** — writes via Microsoft Graph API (`/me/contacts`, `/me/calendars`, `/me/todo/lists`)
+- **Standalone classic Outlook** — runs an embedded Radicale DAV server on `localhost:8765` and renders the ledger as `.vcf` (contacts) and `.ics` (calendar/tasks) files; the bundled [Outlook CalDav Synchronizer](https://github.com/aluxnimm/outlookcaldavsynchronizer) addin reads them into Outlook
 
-- **Contacts** — syncs all your Google contacts
-- **Calendar** — syncs all your Google calendar events
-- **Tasks** — syncs all your Google tasks
-- **Works with any Outlook** — Microsoft 365 (cloud) and standalone classic Outlook
-- **Auto-detection** — GBridge figures out which Outlook you have automatically
-- **Windows, macOS, and Linux**
+---
+
+## Commands
+
+### Core
+
+| Command | What it does |
+|---|---|
+| `gbridge setup` | **First-time setup wizard** |
+| `gbridge` | Run a Google sync (default command) |
+| `gbridge status` | Show ledger counts and last sync time |
+| `gbridge auth` | Re-authenticate with Google |
+| `gbridge --version` | Show version |
+
+### Outlook write-back (Phase 2)
+
+| Command | What it does |
+|---|---|
+| `gbridge outlook auth --client-id GUID` | Sign in to Microsoft (saves GUID to config) |
+| `gbridge outlook push` | Push ledger → Outlook (one-shot) |
+| `gbridge outlook push --dry` | Show what would be pushed without writing |
+| `gbridge outlook status` | Show push state, mode, conflict count |
+
+### Conflict resolution
+
+| Command | What it does |
+|---|---|
+| `gbridge conflicts list` | List items changed on both sides since last push |
+| `gbridge conflicts resolve ID --winner google` | Keep the Google version |
+| `gbridge conflicts resolve ID --winner outlook` | Keep the Outlook version |
+
+### Background service
+
+| Command | What it does |
+|---|---|
+| `gbridge daemon` | Start background service with tray icon |
+| `gbridge autostart install` | Launch GBridge automatically on login |
+| `gbridge autostart remove` | Remove autostart |
+| `gbridge autostart status` | Check if autostart is installed |
+| `gbridge gui` | Open the Tkinter setup wizard |
+
+---
+
+## Background Daemon & Tray
+
+`gbridge daemon` runs GBridge as a background service:
+
+- **Auto-sync** on a configurable interval (default: every 15 minutes)
+- **Auto-push** to Outlook after each sync (if configured)
+- **System tray icon** with quick actions:
+  - Sync now
+  - Push to Outlook
+  - Resolve conflicts (N) — appears only when conflicts are pending
+  - Show status
+  - Quit
+- **Toast notifications** after each sync/push
+
+To start on login: `gbridge autostart install`
+
+---
 
 ## Safety Guarantees
 
@@ -270,30 +297,30 @@ graph LR
     subgraph "🛡️ What GBridge CAN Do"
         R["📖 READ your Google\ncontacts, calendar, tasks"]
         S["💾 SAVE data locally\non your computer"]
-        K["🔑 STORE login token\nin OS keychain"]
+        K["🔑 STORE tokens\nin OS keychain"]
+        W2["✏️ WRITE to Outlook\n(with your permission)"]
     end
 
     subgraph "🚫 What GBridge CANNOT Do"
         W["✏️ Modify your\nGoogle data"]
-        D["🗑️ Delete anything\nin your account"]
-        N["📡 Send data to\nany other server"]
+        D["🗑️ Delete anything\nin Google"]
+        N["📡 Send data to\nany external server"]
         T2["📊 Track you or\ncollect analytics"]
     end
 
     style R fill:#4caf50,stroke:#388e3c,color:#fff
     style S fill:#4caf50,stroke:#388e3c,color:#fff
     style K fill:#4caf50,stroke:#388e3c,color:#fff
+    style W2 fill:#4caf50,stroke:#388e3c,color:#fff
     style W fill:#f44336,stroke:#d32f2f,color:#fff
     style D fill:#f44336,stroke:#d32f2f,color:#fff
     style N fill:#f44336,stroke:#d32f2f,color:#fff
     style T2 fill:#f44336,stroke:#d32f2f,color:#fff
 ```
 
-GBridge is built with a **zero-risk** philosophy. Here's the proof — you can verify every claim yourself:
+### 1. Google data is read-only — always
 
-### 1. Read-only — it's impossible for GBridge to modify your Google data
-
-These are the exact Google API scopes in our code ([`src/gbridge/config/defaults.py` line 13-15](https://github.com/amitrintzler/GBridge/blob/main/src/gbridge/config/defaults.py#L13-L15)):
+The exact scopes in [`src/gbridge/config/defaults.py`](https://github.com/amitrintzler/GBridge/blob/main/src/gbridge/config/defaults.py):
 
 ```python
 GOOGLE_SCOPES = [
@@ -303,144 +330,218 @@ GOOGLE_SCOPES = [
 ]
 ```
 
-Every scope ends in `.readonly`. Google enforces this at the API level — even if our code tried to write, Google would reject it. You can also see this when you authorize GBridge: the Google consent screen will say **"View your contacts"**, not "Edit your contacts".
+Every scope ends in `.readonly`. Google enforces this server-side — even if our code tried to write, Google would reject the request. The consent screen will say **"View your contacts"**, not "Edit your contacts".
 
-### 2. No guessing — tracked by unique Google IDs
+### 2. No fuzzy matching — tracked by Google IDs
 
-Items are matched by their Google-assigned unique IDs ([`src/gbridge/core/engine.py` line 177-183](https://github.com/amitrintzler/GBridge/blob/main/src/gbridge/core/engine.py#L177-L183)):
+Items are matched by Google-assigned unique IDs:
 - Contacts: `resource_name` (e.g. `people/c1234567890`)
 - Events: `event_id`
 - Tasks: `task_id`
 
-No fuzzy name matching, no "best guess" merging. If the ID doesn't match, it's a different item.
+No guessing, no name matching. If the ID doesn't match, it's treated as a different item.
 
-### 3. Smart sync — SHA-256 hash proves what changed
+### 3. SHA-256 fingerprinting — only real changes
 
-Every item is fingerprinted with SHA-256 ([`src/gbridge/core/hasher.py`](https://github.com/amitrintzler/GBridge/blob/main/src/gbridge/core/hasher.py)). If the hash matches the last sync, the item is skipped. Only real changes trigger action.
+Every item is hashed. If the hash matches the last sync, the item is skipped entirely. This means a sync with no real changes is always a no-op.
 
 ### 4. Local-only — no external servers
 
-Search the entire codebase for network calls: the only HTTP connections are to `googleapis.com` domains. There is no telemetry endpoint, no analytics SDK, no phone-home URL. Verify it yourself:
+The only outbound connections are to `googleapis.com` and `graph.microsoft.com`. There are no telemetry endpoints, analytics SDKs, or phone-home URLs. Verify yourself:
 
 ```bash
-grep -r "http" src/gbridge/ --include="*.py" | grep -v "localhost" | grep -v "googleapis" | grep -v "google.com" | grep -v "github.com"
+grep -r "http" src/gbridge/ --include="*.py" \
+  | grep -v googleapis | grep -v google.com \
+  | grep -v graph.microsoft.com | grep -v login.microsoftonline.com \
+  | grep -v localhost | grep -v github.com
 ```
 
-This returns nothing. Zero connections to anything except Google's official APIs.
+### 5. OS keychain token storage
 
-### 5. Secure token storage — OS keychain, not files
-
-Login tokens are stored via the `keyring` library ([`src/gbridge/google/auth.py` line 86-92](https://github.com/amitrintzler/GBridge/blob/main/src/gbridge/google/auth.py)):
+Both Google and Microsoft tokens are stored via the `keyring` library — never written to plain-text files:
 - **Windows**: Windows Credential Locker
 - **macOS**: macOS Keychain
 - **Linux**: GNOME Secret Service / KWallet
 
-Tokens are never written to plain-text files. You can verify: there is no `.json` or `.txt` file containing your Google token anywhere in the GBridge config folder.
+### 6. Automated security scanning on every commit
 
-### 6. Automated security scanning on every code change
-
-| Check | What it does | Status |
+| Check | What it scans | Frequency |
 |---|---|---|
-| [Ruff Security Rules](https://github.com/amitrintzler/GBridge/blob/main/pyproject.toml) | 20+ categories: injection, hardcoded secrets, crypto issues | Every commit |
+| [Ruff security rules](https://github.com/amitrintzler/GBridge/blob/main/pyproject.toml) | Injection, hardcoded secrets, crypto misuse | Every commit |
 | [Bandit](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml) | Deep static security analysis | Every commit |
-| [pip-audit](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml) | Scans dependencies for known CVEs | Every commit + weekly |
-| [CodeQL](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml) | GitHub's semantic code analysis | Every commit |
+| [pip-audit](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml) | Known CVEs in dependencies | Every commit + weekly |
+| [CodeQL](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml) | Semantic code analysis | Every commit |
 | [SBOM](https://github.com/amitrintzler/GBridge/actions/workflows/security.yml) | Full dependency bill of materials | Every release |
 
-## Commands
-
-| Command | What it does |
-|---|---|
-| `gbridge setup` | **First-time setup wizard (start here)** |
-| `gbridge` | Run a sync |
-| `gbridge status` | Check what's synced |
-| `gbridge auth` | Sign in to Google again |
-| `gbridge --version` | Show version |
+---
 
 ## Where Is My Data?
 
 | What | Windows | macOS | Linux |
 |---|---|---|---|
-| Config | `%APPDATA%\GBridge\` | `~/Library/Application Support/GBridge/` | `~/.config/gbridge/` |
-| Sync database | Same folder | Same folder | Same folder |
-| Login tokens | Windows Credential Locker | macOS Keychain | Secret Service |
-| Logs | Same folder, `logs/` | Same folder, `logs/` | Same folder, `logs/` |
+| Config + database | `%APPDATA%\GBridge\` | `~/Library/Application Support/GBridge/` | `~/.config/gbridge/` |
+| Google token | Windows Credential Locker | macOS Keychain | Secret Service |
+| Microsoft token | Windows Credential Locker | macOS Keychain | Secret Service |
+| DAV collections | `%LOCALAPPDATA%\GBridge\dav\` | `~/.local/share/GBridge/dav/` | `~/.local/share/gbridge/dav/` |
+| Logs | Config folder / `logs/` | Config folder / `logs/` | Config folder / `logs/` |
+
+---
+
+## Configuration
+
+Settings live in `config.json` inside the config directory. Key options:
+
+| Setting | Default | Description |
+|---|---|---|
+| `sync_interval_minutes` | `15` | How often to sync from Google |
+| `push_interval_minutes` | `15` | How often to push to Outlook |
+| `outlook_mode` | `disabled` | `disabled` \| `graph` (M365) \| `dav` (standalone) |
+| `microsoft_client_id` | _(empty)_ | Your Azure app GUID (set via `gbridge outlook auth`) |
+| `enabled_calendars` | `[]` | Limit sync to specific calendar IDs (empty = all) |
+| `enabled_tasklists` | `[]` | Limit sync to specific tasklist IDs (empty = all) |
+
+---
 
 ## Troubleshooting
 
-**The setup wizard says it can't find `client_secret.json`**
-Follow the visual guide in the wizard. It tells you exactly where to put the file.
+**"The setup wizard says it can't find `client_secret.json`"**
+Follow the visual guide — it tells you exactly where to save the file. On Windows: `%APPDATA%\GBridge\client_secret.json`.
 
-**Browser doesn't open?**
-Copy the URL from the terminal and paste it into your browser.
+**"Browser doesn't open for Google sign-in"**
+Copy the URL from the terminal and paste it into your browser manually.
 
-**"Authentication failed"?**
-Run `gbridge auth` to sign in again. Make sure you enabled all 3 APIs in Google Cloud Console.
+**"Authentication failed" / "401 Unauthorized"**
+Run `gbridge auth` to re-authenticate. Make sure you enabled all 3 APIs in the Google Cloud Console (People API, Google Calendar API, Tasks API).
 
-**Want to start over?**
-Run `gbridge auth` to re-authenticate, or delete the config folder (see "Where Is My Data?" above).
+**"Microsoft sign-in says client_id is not configured"**
+You need to register a free Azure app and run `gbridge outlook auth --client-id <YOUR_GUID>`. See [First-time Setup](#first-time-setup-5-minutes-once-only) above.
+
+**"Windows shows a SmartScreen warning"**
+Click **"More info" → "Run anyway"**. This happens because the binary is not yet code-signed. This is on the [roadmap](#pending-work).
+
+**Want to start fresh?**
+Delete the config folder (see [Where Is My Data?](#where-is-my-data)) or run `gbridge auth` to just reset credentials.
+
+---
+
+## Pending Work
+
+The following items are tracked in [BACKLOG.md](BACKLOG.md) and planned for upcoming releases:
+
+### Near-term (v0.2.0)
+| Item | Notes |
+|---|---|
+| **Ship a bundled Azure app client_id** | Today users must register their own (2-min setup). A future release will ship a registered GBridge app so Outlook write-back works out-of-the-box. |
+| **Windows code signing** | Remove the SmartScreen warning. Requires an Authenticode certificate. |
+| **NSIS installer testing** | End-to-end: install → shortcuts → uninstall → clean. |
+| **macOS .dmg creation** | Wrap the binary in a proper disk image. |
+| **Linux .deb / .rpm packages** | Distribution-native packaging. |
+
+### Medium-term (v0.3.0)
+| Item | Notes |
+|---|---|
+| **Two-way sync** | Today GBridge is one-directional: Google → Outlook. True two-way sync (edits in Outlook flow back to Google) requires write scopes on Google, which is a bigger design decision. |
+| **Google Tasks subtask hierarchy** | Graph To Do has no parent/child concept; subtasks currently land as siblings in Outlook. |
+| **Full RRULE support** | Common recurrence patterns (daily/weekly/monthly/yearly) work. Rarer clauses (BYSETPOS, BYYEARDAY, EXDATE lists) are best-effort on Graph; byte-perfect on DAV. |
+| **Multi-calendar selection UI** | A picker in the setup wizard to choose which Google calendars and tasklists to sync (config fields exist, UI not yet wired). |
+| **Sync progress indicators** | Progress bars in CLI and Tk wizard for large accounts. |
+
+### Known limitations (v0.1.0)
+- **Google data cannot be modified** — read-only by design, enforced at the API level
+- **Task subtask nesting** is not preserved in Outlook (Graph To Do limitation)
+- **Graph To Do statuses** `inProgress`, `waitingOnOthers`, `deferred` collapse to `needsAction` when mapping back to Google format
+- **DAV conflict detection** is delegated to the Outlook CalDav Synchronizer addin; GBridge is the authoritative source and rewrites on each push
 
 ---
 
 ## For Developers
 
-### Install from source
+### Project structure
 
-```bash
-git clone https://github.com/amitrintzler/GBridge.git
-cd GBridge
-pip install -e ".[dev]"
+```
+src/gbridge/
+  __main__.py           # CLI entry point (all subcommands)
+  core/
+    engine.py           # Google sync orchestrator
+    pusher.py           # Outlook push engine (dry/graph/dav modes)
+    ledger.py           # SQLite ledger (v3 schema)
+    hasher.py           # SHA-256 content fingerprinting
+    conflicts.py        # Conflict record/resolve helpers
+  google/
+    auth.py             # Google OAuth 2.0 + OS keychain
+    people.py           # Contacts API (delta sync)
+    calendar.py         # Calendar API (delta sync)
+    tasks.py            # Tasks API
+    models.py           # GoogleContact / GoogleEvent / GoogleTask
+  microsoft/
+    auth.py             # MSAL public-client + OS keychain
+    models.py           # MicrosoftContact / Event / Task
+    mapping.py          # Google <-> Graph field mapping + RRULE parser
+    _http.py            # Graph HTTP client (429/410/412 handling)
+    graph_people.py     # /me/contacts CRUD + delta
+    graph_calendar.py   # /me/calendars + events CRUD + delta
+    graph_tasks.py      # /me/todo/lists + tasks CRUD
+  dav/
+    server.py           # Radicale subprocess supervisor
+    storage.py          # Ledger -> .vcf/.ics projector
+    ocs_config.py       # Outlook CalDav Synchronizer profile XML
+  outlook/
+    detect.py           # M365 vs standalone detection
+  gui/
+    wizard.py           # Tkinter setup wizard
+    conflicts.py        # Tkinter conflict resolution dialog
+  config/
+    settings.py         # JSON config with typed properties
+    defaults.py         # Constants (scopes, keyring keys, defaults)
+  utils/
+    logger.py           # Rotating file logger
+    backoff.py          # Exponential backoff + Retry-After
+    scheduler.py        # APScheduler (sync + push jobs)
+    tray.py             # pystray system tray
+    notify.py           # plyer toast notifications
+    resources.py        # Bundled asset paths (PyInstaller-aware)
+  service/
+    windows.py          # HKCU Run-key autostart
+    macos.py            # LaunchAgent plist autostart
+    linux.py            # systemd-user autostart
+  daemon.py             # Orchestrator: sync + push + Radicale + tray
+installer/
+  windows/              # NSIS script + build.bat
+  macos/                # build.sh
+  linux/                # build.sh
+tests/                  # 269 unit tests, 80% coverage
 ```
 
 ### Run tests
 
 ```bash
 pytest tests/ -v
-ruff check src/ tests/
+pytest tests/ --cov=src/gbridge --cov-report=term-missing  # with coverage
+ruff check src/ tests/                                      # lint
+mypy src/gbridge/ --ignore-missing-imports                  # types
+bandit -c pyproject.toml -r src/gbridge                    # security
 ```
 
-### Build installers
+### Build installers locally
 
 ```bash
-# Windows (run on Windows)
+# CI builds automatically on every v* tag.
+# For local builds:
+
+# Windows
 installer\windows\build.bat
 
-# macOS (run on macOS)
+# macOS / Linux
 bash installer/macos/build.sh
-
-# Linux (run on Linux)
 bash installer/linux/build.sh
 ```
 
-### Project Structure
+Installers are also built automatically by GitHub Actions on every release tag and attached to the [Releases page](https://github.com/amitrintzler/GBridge/releases).
 
-```
-src/gbridge/
-  __main__.py          # CLI (setup wizard, sync, status, auth)
-  core/
-    engine.py          # Sync orchestrator
-    ledger.py          # SQLite sync state
-    hasher.py          # SHA-256 content fingerprinting
-  google/
-    auth.py            # OAuth 2.0 + OS keychain
-    people.py          # Contacts API
-    calendar.py        # Calendar API
-    tasks.py           # Tasks API
-    models.py          # Data models
-  outlook/
-    detect.py          # M365 vs standalone detection
-  config/
-    settings.py        # JSON config
-    defaults.py        # Constants
-  utils/
-    logger.py          # Rotating file logger
-    backoff.py         # API retry logic
-installer/
-  windows/             # NSIS installer + build script
-  macos/               # .app bundle + build script
-  linux/               # .deb/.rpm + build script
-```
+---
 
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
+Third-party component: [Outlook CalDav Synchronizer](https://github.com/aluxnimm/outlookcaldavsynchronizer) (MIT / MPL-2.0) — optionally bundled in the Windows installer for the standalone-Outlook DAV path.
