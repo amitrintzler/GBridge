@@ -29,6 +29,9 @@
 - [x] Graph To Do tasks read + write (`/me/todo/lists/{id}/tasks` + CRUD)
 - [x] Pusher engine with dry / graph / dav modes
 - [x] Conflict detection via If-Match / 412 → `conflicts` table entry
+- [x] Conflict *resolution* acted on by the pusher (winner=google force-overwrite;
+      winner=outlook captures fresh etag + advances baseline; unresolved skipped
+      so the winner is never reset)
 - [x] Embedded Radicale DAV server (subprocess supervisor + health probe + pidfile)
 - [x] DAV storage projector — ledger → .vcf / .ics files
 - [x] Outlook CalDav Synchronizer (OCS) per-profile XML config writer
@@ -67,9 +70,11 @@
 - [ ] End-to-end test with real Outlook (M365)
 - [ ] End-to-end test with real Outlook (standalone + OCS)
 - [x] Rate limit handling — `Retry-After` honored on Google and Graph
-- [x] Recurring-event RRULE → Graph recurrence object (DAILY/WEEKLY/MONTHLY/
-      YEARLY with INTERVAL/COUNT/UNTIL/BYDAY/BYMONTHDAY). Rare clauses
-      (BYSETPOS, EXDATE, BYYEARDAY) remain best-effort.
+- [x] Recurring-event RRULE → Graph recurrence object. DAILY/WEEKLY/MONTHLY/
+      YEARLY with INTERVAL/COUNT/UNTIL/BYDAY/BYMONTHDAY, plus relativeMonthly/
+      relativeYearly for "Nth weekday" (BYDAY=3TU / BYSETPOS / -1FR).
+      Clauses with no Graph equivalent (BYYEARDAY, BYWEEKNO, EXDATE, RDATE)
+      are logged rather than silently dropped.
 - [x] Graph-side deletion propagation (schema v3 `pending_deletions` queue)
 - [x] Partial-sync resume — `sync_phase` checkpoint in `sync_state` warns on next run
 - [x] Multi-calendar / multi-tasklist selection (settings fields honored by engine)

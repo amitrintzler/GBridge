@@ -99,6 +99,13 @@ class GraphTasksService:
         )
         return ms_payload_to_ms_task(body, tasklist_id)
 
+    def get_one(self, tasklist_id: str, outlook_id: str) -> MicrosoftTask:
+        """Fetch a single Outlook task (used to capture its current etag)."""
+        body = self._client.get(
+            f"/me/todo/lists/{tasklist_id}/tasks/{outlook_id}"
+        )
+        return ms_payload_to_ms_task(body, tasklist_id)
+
     def delete(
         self,
         tasklist_id: str,

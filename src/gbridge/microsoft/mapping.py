@@ -15,11 +15,15 @@ Limitations (documented in CHANGELOG):
 
 from __future__ import annotations
 
+import logging
+import re
 from datetime import UTC, datetime
 from typing import Any
 
 from gbridge.google.models import GoogleContact, GoogleEvent, GoogleTask
 from gbridge.microsoft.models import MicrosoftContact, MicrosoftEvent, MicrosoftTask
+
+logger = logging.getLogger(__name__)
 
 # ---- Contacts ------------------------------------------------------------
 
@@ -129,6 +133,49 @@ _RRULE_BYDAY_TO_GRAPH = {
     "MO": "monday", "TU": "tuesday", "WE": "wednesday", "TH": "thursday",
     "FR": "friday", "SA": "saturday", "SU": "sunday",
 }
+# Graph "index" within the month/year for relative recurrence patterns.
+_RRULE_INDEX_TO_GRAPH = {
+    1: "first", 2: "second", 3: "third", 4: "fourth", 5: "last", -1: "last",
+}
+_BYDAY_TOKEN = re.compile(r"^([+-]?\d+)?(MO|TU|WE|TH|FR|SA|SU)$")
+# Clauses we knowingly cannot represent in a Graph recurrence object.
+_UNSUPPORTED_RRULE_CLAUSES = ("BYYEARDAY", "BYWEEKNO", "EXDATE", "RDATE")
+
+
+def _parse_byday_ordinal(
+    byday: str, setpos: str | None
+) -> tuple[list[str], str] | None:
+    """Parse BYDAY (+ optional BYSETPOS) into (daysOfWeek, index).
+
+    Handles ordinal-prefixed weekdays like ``3TU`` (3rd Tuesday) and
+    ``-1FR`` (last Friday), as well as ``BYDAY=TU;BYSETPOS=3``. Returns
+    None when BYDAY contains no weekday component (caller falls back to an
+    absolute pattern).
+    """
+    if not byday:
+        return None
+    days: list[str] = []
+    ordinal: int | None = None
+    for raw in byday.split(","):
+        m = _BYDAY_TOKEN.match(raw.strip().upper())
+        if not m:
+            continue
+        if m.group(1):
+            ordinal = int(m.group(1))
+        day = _RRULE_BYDAY_TO_GRAPH.get(m.group(2))
+        if day:
+            days.append(day)
+    if not days:
+        return None
+    if ordinal is None and setpos:
+        try:
+            ordinal = int(setpos)
+        except ValueError:
+            ordinal = None
+    if ordinal is None:
+        ordinal = 1
+    index = _RRULE_INDEX_TO_GRAPH.get(ordinal, "last" if ordinal < 0 else "first")
+    return days, index
 
 
 def rrule_to_graph_recurrence(
@@ -139,16 +186,20 @@ def rrule_to_graph_recurrence(
 ) -> dict[str, Any] | None:
     """Convert a Google RRULE: line to a Graph ``recurrence`` object.
 
-    Supports the common subset:
+    Supports:
       - FREQ=DAILY|WEEKLY|MONTHLY|YEARLY
       - INTERVAL=<n>
-      - COUNT=<n>  (mapped to endType=numbered)
-      - UNTIL=<date/datetime>  (mapped to endType=endDate)
-      - BYDAY=MO,TU,...
-      - BYMONTHDAY=<n>
+      - COUNT=<n>  (mapped to range type=numbered)
+      - UNTIL=<date/datetime>  (mapped to range type=endDate)
+      - WEEKLY  + BYDAY=MO,TU,...           -> daysOfWeek
+      - MONTHLY + BYMONTHDAY=<n>            -> absoluteMonthly
+      - MONTHLY + BYDAY=3TU / BYSETPOS=3    -> relativeMonthly (3rd Tuesday)
+      - YEARLY  + BYMONTH + BYMONTHDAY      -> absoluteYearly
+      - YEARLY  + BYMONTH + BYDAY/BYSETPOS  -> relativeYearly
 
-    Returns None if no recognised RRULE is present. Unrecognised clauses are
-    ignored so round-trip stays best-effort — complex cases may drift.
+    Returns None if no recognised RRULE is present. Clauses with no Graph
+    equivalent (BYYEARDAY, BYWEEKNO, EXDATE, RDATE) are logged and ignored
+    rather than silently dropped.
     """
     rrule = next(
         (r[len("RRULE:"):] for r in rules if r.startswith("RRULE:")),
@@ -166,25 +217,53 @@ def rrule_to_graph_recurrence(
     freq = parts.get("FREQ", "").upper()
     if freq not in _RRULE_FREQ_TO_GRAPH:
         return None
+
+    # Warn (don't silently drop) for clauses we can't represent in Graph.
+    present_unsupported = [c for c in _UNSUPPORTED_RRULE_CLAUSES if c in parts]
+    if present_unsupported:
+        logger.warning(
+            "RRULE clause(s) %s have no Microsoft Graph equivalent and will be "
+            "ignored; recurrence may differ from Google: %s",
+            present_unsupported,
+            rrule,
+        )
+
     interval = int(parts.get("INTERVAL", "1") or "1")
     pattern: dict[str, Any] = {
         "type": _RRULE_FREQ_TO_GRAPH[freq],
         "interval": interval,
     }
+    byday = parts.get("BYDAY", "")
+    setpos = parts.get("BYSETPOS")
+
     if freq == "WEEKLY":
-        byday = parts.get("BYDAY", "")
         days = [
-            _RRULE_BYDAY_TO_GRAPH[d]
+            _RRULE_BYDAY_TO_GRAPH[d.strip().upper()]
             for d in byday.split(",")
-            if d in _RRULE_BYDAY_TO_GRAPH
+            if d.strip().upper() in _RRULE_BYDAY_TO_GRAPH
         ]
         if days:
             pattern["daysOfWeek"] = days
-    if freq == "MONTHLY":
-        pattern["dayOfMonth"] = int(parts.get("BYMONTHDAY", "1"))
-    if freq == "YEARLY":
-        pattern["dayOfMonth"] = int(parts.get("BYMONTHDAY", "1"))
+    elif freq == "MONTHLY":
+        relative = _parse_byday_ordinal(byday, setpos)
+        if relative is not None:
+            # e.g. FREQ=MONTHLY;BYDAY=3TU -> "third Tuesday of the month"
+            days, index = relative
+            pattern["type"] = "relativeMonthly"
+            pattern["daysOfWeek"] = days
+            pattern["index"] = index
+        else:
+            pattern["dayOfMonth"] = int(parts.get("BYMONTHDAY", "1"))
+    elif freq == "YEARLY":
         pattern["month"] = int(parts.get("BYMONTH", "1"))
+        relative = _parse_byday_ordinal(byday, setpos)
+        if relative is not None:
+            days, index = relative
+            pattern["type"] = "relativeYearly"
+            pattern["daysOfWeek"] = days
+            pattern["index"] = index
+        else:
+            pattern["dayOfMonth"] = int(parts.get("BYMONTHDAY", "1"))
 
     start_date = start[:10] if len(start) >= 10 else start
     range_block: dict[str, Any] = {

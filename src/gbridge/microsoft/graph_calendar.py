@@ -125,5 +125,10 @@ class GraphCalendarService:
         )
         return ms_payload_to_ms_event(body, calendar_id)
 
+    def get_one(self, outlook_id: str, calendar_id: str) -> MicrosoftEvent:
+        """Fetch a single Outlook event (used to capture its current etag)."""
+        body = self._client.get(f"/me/events/{outlook_id}")
+        return ms_payload_to_ms_event(body, calendar_id)
+
     def delete(self, outlook_id: str, *, if_match: str | None = None) -> None:
         self._client.delete(f"/me/events/{outlook_id}", if_match=if_match)

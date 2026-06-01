@@ -105,5 +105,10 @@ class GraphPeopleService:
         )
         return ms_payload_to_ms_contact(body)
 
+    def get_one(self, outlook_id: str) -> MicrosoftContact:
+        """Fetch a single Outlook contact (used to capture its current etag)."""
+        body = self._client.get(f"/me/contacts/{outlook_id}")
+        return ms_payload_to_ms_contact(body)
+
     def delete(self, outlook_id: str, *, if_match: str | None = None) -> None:
         self._client.delete(f"/me/contacts/{outlook_id}", if_match=if_match)

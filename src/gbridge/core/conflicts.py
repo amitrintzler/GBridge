@@ -117,6 +117,29 @@ def get_conflict(ledger: SyncLedger, conflict_id: int) -> Conflict | None:
     return Conflict(*row) if row else None
 
 
+def get_conflict_for_item(
+    ledger: SyncLedger,
+    item_type: str,
+    google_id: str,
+    google_parent_id: str = "",
+) -> Conflict | None:
+    """Return the conflict row for a specific ledger item, if any.
+
+    The pusher consults this before every write so it can (a) skip items
+    still awaiting the user's decision instead of re-attempting and resetting
+    the winner, and (b) act on a resolved winner.
+    """
+    cur = ledger.connection.execute(
+        "SELECT id, item_type, google_id, google_parent_id, "
+        "google_hash, outlook_hash, detected_at, winner, resolved_at "
+        "FROM conflicts "
+        "WHERE item_type = ? AND google_id = ? AND google_parent_id = ?",
+        (item_type, google_id, google_parent_id),
+    )
+    row = cur.fetchone()
+    return Conflict(*row) if row else None
+
+
 def resolve_conflict(
     ledger: SyncLedger, conflict_id: int, winner: Winner
 ) -> bool:

@@ -83,6 +83,85 @@ class TestRRuleMapping:
         assert r["range"]["type"] == "noEnd"
 
 
+class TestRelativeMonthly:
+    """MONTHLY + BYDAY must map to relativeMonthly, not silently become 'the 1st'."""
+
+    def test_third_tuesday_via_byday_prefix(self) -> None:
+        r = rrule_to_graph_recurrence(
+            ("RRULE:FREQ=MONTHLY;BYDAY=3TU",),
+            start="2026-05-19T09:00:00Z",
+        )
+        assert r is not None
+        assert r["pattern"]["type"] == "relativeMonthly"
+        assert r["pattern"]["daysOfWeek"] == ["tuesday"]
+        assert r["pattern"]["index"] == "third"
+        # Crucially, it must NOT have collapsed to dayOfMonth.
+        assert "dayOfMonth" not in r["pattern"]
+
+    def test_third_tuesday_via_bysetpos(self) -> None:
+        r = rrule_to_graph_recurrence(
+            ("RRULE:FREQ=MONTHLY;BYDAY=TU;BYSETPOS=3",),
+            start="2026-05-19T09:00:00Z",
+        )
+        assert r is not None
+        assert r["pattern"]["type"] == "relativeMonthly"
+        assert r["pattern"]["index"] == "third"
+
+    def test_last_friday(self) -> None:
+        r = rrule_to_graph_recurrence(
+            ("RRULE:FREQ=MONTHLY;BYDAY=-1FR",),
+            start="2026-05-29T09:00:00Z",
+        )
+        assert r is not None
+        assert r["pattern"]["type"] == "relativeMonthly"
+        assert r["pattern"]["daysOfWeek"] == ["friday"]
+        assert r["pattern"]["index"] == "last"
+
+    def test_plain_monthly_still_absolute(self) -> None:
+        r = rrule_to_graph_recurrence(
+            ("RRULE:FREQ=MONTHLY;BYMONTHDAY=15",),
+            start="2026-05-15T09:00:00Z",
+        )
+        assert r is not None
+        assert r["pattern"]["type"] == "absoluteMonthly"
+        assert r["pattern"]["dayOfMonth"] == 15
+
+
+class TestRelativeYearly:
+    def test_yearly_byday(self) -> None:
+        r = rrule_to_graph_recurrence(
+            ("RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=4TH",),
+            start="2026-11-26T09:00:00Z",
+        )
+        assert r is not None
+        assert r["pattern"]["type"] == "relativeYearly"
+        assert r["pattern"]["month"] == 11
+        assert r["pattern"]["daysOfWeek"] == ["thursday"]
+        assert r["pattern"]["index"] == "fourth"
+
+    def test_yearly_absolute_still_works(self) -> None:
+        r = rrule_to_graph_recurrence(
+            ("RRULE:FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=25",),
+            start="2026-12-25T00:00:00Z",
+        )
+        assert r is not None
+        assert r["pattern"]["type"] == "absoluteYearly"
+        assert r["pattern"]["month"] == 12
+        assert r["pattern"]["dayOfMonth"] == 25
+
+
+class TestUnsupportedClausesWarn:
+    def test_byyearday_logs_warning(self, caplog) -> None:
+        with caplog.at_level("WARNING"):
+            r = rrule_to_graph_recurrence(
+                ("RRULE:FREQ=YEARLY;BYYEARDAY=100",),
+                start="2026-04-10T09:00:00Z",
+            )
+        # Still produces a best-effort recurrence (absoluteYearly), but warns.
+        assert r is not None
+        assert any("BYYEARDAY" in m for m in caplog.messages)
+
+
 class TestEventPayloadIncludesRecurrence:
     def test_payload_has_recurrence_for_rrule(self) -> None:
         e = GoogleEvent(

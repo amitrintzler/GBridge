@@ -195,7 +195,7 @@ class Pusher:
         items: list[Any] | None,
         get_id: Callable[[Any], str],
         get_parent: Callable[[Any], str],
-        apply: Callable[[PlannedAction, Any, PushStats], None],
+        apply: Callable[..., None],
     ) -> PushStats:
         stats = PushStats()
         planned = {(p.item.google_id, p.item.google_parent_id): p for p in self.plan(item_type)}
@@ -223,6 +223,20 @@ class Pusher:
             if plan_entry.action == "noop":
                 stats.unchanged += 1
                 continue
+
+            # Consult the conflict table BEFORE attempting any write. This is
+            # what makes manual resolution actually take effect — and prevents
+            # the re-attempt-then-reset loop where a fresh 412 would wipe the
+            # user's recorded winner.
+            conflict = conflicts_module.get_conflict_for_item(
+                self._ledger, item_type, key[0], key[1]
+            )
+            if conflict is not None:
+                self._handle_conflicted_item(
+                    item_type, key, conflict, plan_entry, model, stats, apply
+                )
+                continue
+
             if model is None:
                 logger.warning(
                     "Push: %s %s queued but no source model this cycle; skipping",
@@ -242,6 +256,99 @@ class Pusher:
 
         return stats
 
+    def _handle_conflicted_item(  # noqa: PLR0913
+        self,
+        item_type: str,
+        key: tuple[str, str],
+        conflict: Any,
+        plan_entry: PlannedAction,
+        model: Any | None,
+        stats: PushStats,
+        apply: Callable[..., None],
+    ) -> None:
+        """Act on a standing conflict for one item.
+
+        - winner is None  -> still awaiting the user; skip silently (do NOT
+          re-attempt, or a fresh 412 would reset the winner to NULL).
+        - winner == google -> force-overwrite Outlook, ignoring the stale etag.
+        - winner == outlook -> keep Outlook's version: capture its current
+          etag and advance our baseline so we stop trying to overwrite, until
+          Google changes again.
+        """
+        if conflict.winner is None:
+            stats.conflicts += 1
+            return
+
+        if model is None:
+            logger.warning(
+                "Resolved conflict for %s %s but no source model this cycle; "
+                "deferring until next push",
+                item_type,
+                key[0],
+            )
+            stats.failed += 1
+            return
+
+        try:
+            if conflict.winner == "google":
+                apply(plan_entry, model, stats, force=True)
+            else:  # outlook wins
+                self._accept_outlook_winner(item_type, plan_entry, model, stats)
+            conflicts_module.clear_resolved(self._ledger, conflict.id)
+        except PreconditionFailedError:
+            # Unexpected with force=True (no If-Match sent); re-record to be safe.
+            self._record_conflict(item_type, plan_entry.item)
+            stats.conflicts += 1
+        except GraphError as exc:
+            logger.exception(
+                "Resolving conflict for %s %s failed: %s", item_type, key[0], exc
+            )
+            stats.failed += 1
+
+    def _accept_outlook_winner(
+        self,
+        item_type: str,
+        plan_entry: PlannedAction,
+        model: Any,
+        stats: PushStats,
+    ) -> None:
+        """User chose Outlook's version — stop overwriting it.
+
+        We fetch Outlook's current etag (so a later legitimate Google change
+        can use a valid If-Match) and set our stored outlook_hash to the
+        current Google content hash so `_classify` returns 'noop' until
+        Google changes again.
+        """
+        outlook_id = plan_entry.item.outlook_id
+        parent = plan_entry.item.google_parent_id
+        fresh_etag = self._fetch_outlook_etag(item_type, outlook_id, parent)
+        self._ledger.set_outlook_state(
+            item_type=item_type,
+            google_id=plan_entry.item.google_id,
+            google_parent_id=parent,
+            outlook_id=outlook_id,
+            outlook_hash=content_hash(model),
+            outlook_etag=fresh_etag,
+        )
+        stats.unchanged += 1
+
+    def _fetch_outlook_etag(
+        self, item_type: str, outlook_id: str, parent_id: str
+    ) -> str:
+        if item_type == "contact":
+            if self._people is None:
+                raise RuntimeError("graph mode missing people_svc")
+            return self._people.get_one(outlook_id).etag
+        if item_type == "event":
+            if self._calendar is None:
+                raise RuntimeError("graph mode missing calendar_svc")
+            return self._calendar.get_one(outlook_id, parent_id).etag
+        if item_type == "task":
+            if self._tasks is None:
+                raise RuntimeError("graph mode missing tasks_svc")
+            return self._tasks.get_one(parent_id, outlook_id).etag
+        return ""
+
     @staticmethod
     def _tally_dry(planned: PlannedAction, stats: PushStats) -> None:
         if planned.action == "create":
@@ -258,6 +365,8 @@ class Pusher:
         planned: PlannedAction,
         contact: GoogleContact,
         stats: PushStats,
+        *,
+        force: bool = False,
     ) -> None:
         if self._mode != "graph":
             stats.failed += 1
@@ -283,7 +392,7 @@ class Pusher:
             ms = self._people.update(
                 planned.item.outlook_id,
                 contact,
-                if_match=planned.item.outlook_etag or None,
+                if_match=None if force else (planned.item.outlook_etag or None),
             )
             self._persist_outlook(
                 "contact",
@@ -299,6 +408,8 @@ class Pusher:
         planned: PlannedAction,
         event: GoogleEvent,
         stats: PushStats,
+        *,
+        force: bool = False,
     ) -> None:
         if self._mode != "graph":
             stats.failed += 1
@@ -325,7 +436,7 @@ class Pusher:
                 planned.item.outlook_id,
                 event.calendar_id,
                 event,
-                if_match=planned.item.outlook_etag or None,
+                if_match=None if force else (planned.item.outlook_etag or None),
             )
             self._persist_outlook(
                 "event",
@@ -341,6 +452,8 @@ class Pusher:
         planned: PlannedAction,
         task: GoogleTask,
         stats: PushStats,
+        *,
+        force: bool = False,
     ) -> None:
         if self._mode != "graph":
             stats.failed += 1
@@ -367,7 +480,7 @@ class Pusher:
                 task.tasklist_id,
                 planned.item.outlook_id,
                 task,
-                if_match=planned.item.outlook_etag or None,
+                if_match=None if force else (planned.item.outlook_etag or None),
             )
             self._persist_outlook(
                 "task",

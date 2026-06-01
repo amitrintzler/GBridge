@@ -10,6 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Initial release. Phase 1 (Google read) + Phase 2 (Outlook write) + Phase 3
 (daemon / tray / wizard / autostart) all landed in the same cut.
 
+### Fixed (correctness pass)
+
+- **Conflict resolution now actually takes effect.** Previously the pusher
+  never consulted the `winner` column: a resolved conflict did nothing, and
+  the next push's 412 re-detection reset `winner` back to NULL — trapping the
+  user in a loop. The pusher now checks the conflict table before every
+  write: unresolved conflicts are skipped (no re-attempt, no reset);
+  `winner=google` force-overwrites Outlook without the stale `If-Match`;
+  `winner=outlook` fetches Outlook's current etag (new per-service
+  `get_one()`) and advances the ledger baseline so syncing stops nagging
+  until Google changes again. Resolved rows are cleared after action.
+- **Monthly/yearly "Nth weekday" recurrence no longer corrupts dates.**
+  `FREQ=MONTHLY;BYDAY=3TU` ("3rd Tuesday") previously collapsed silently to
+  "the 1st of the month". It now maps to Graph `relativeMonthly` /
+  `relativeYearly` with the correct `daysOfWeek` + `index`, supporting
+  ordinal-prefixed BYDAY (`3TU`, `-1FR`) and `BYSETPOS`. Clauses with no
+  Graph equivalent (BYYEARDAY, BYWEEKNO, EXDATE, RDATE) are now logged
+  instead of silently dropped.
+
 ### Added (gap-close pass)
 
 - **Google→Outlook deletion propagation** — when Google drops an item we
