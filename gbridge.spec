@@ -125,9 +125,11 @@ a = Analysis(
     excludes=[
         # Note: tkinter intentionally NOT excluded — Phase 2 conflict dialog
         # and setup wizard both use it.
+        # Note: distutils removed from excludes — msal / radicale deps import
+        # it transitively and PyInstaller raises ValueError if a module appears
+        # in both hiddenimports and excludes.
         "unittest",
         "test",
-        "distutils",
         "setuptools",
         "pip",
     ],
