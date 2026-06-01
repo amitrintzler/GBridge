@@ -85,16 +85,18 @@ jobs:
         with:
           path: artifacts
 
-      - name: Rename artifacts
+      - name: Prepare release artifacts
+        # download-artifact creates subdirectories (artifacts/gbridge-macos/,
+        # artifacts/gbridge-linux/) with the same name as the artifact.
+        # Copying to root-level names avoids the mv-into-directory collision.
         run: |
-          mv artifacts/gbridge-windows/gbridge.exe artifacts/gbridge-windows.exe
-          mv artifacts/gbridge-macos/gbridge artifacts/gbridge-macos
-          mv artifacts/gbridge-linux/gbridge artifacts/gbridge-linux
-          chmod +x artifacts/gbridge-macos artifacts/gbridge-linux
+          cp artifacts/gbridge-windows/gbridge.exe gbridge-windows.exe
+          cp artifacts/gbridge-macos/gbridge    gbridge-macos
+          cp artifacts/gbridge-linux/gbridge    gbridge-linux
+          chmod +x gbridge-macos gbridge-linux
 
       - name: Generate SHA-256 checksums
         run: |
-          cd artifacts
           sha256sum gbridge-windows.exe gbridge-macos gbridge-linux > checksums.sha256
           echo "=== Checksums ==="
           cat checksums.sha256
@@ -103,10 +105,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/gbridge-windows.exe
-            artifacts/gbridge-macos
-            artifacts/gbridge-linux
-            artifacts/checksums.sha256
+            gbridge-windows.exe
+            gbridge-macos
+            gbridge-linux
+            checksums.sha256
           body: |
             ## GBridge ${{ github.ref_name }}
 
