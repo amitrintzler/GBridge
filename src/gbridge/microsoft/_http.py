@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import random
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import requests
 
@@ -171,7 +171,7 @@ class GraphClient:
             if 200 <= status < 300:
                 if not expect_json or status == 204 or not response.content:
                     return {}
-                return response.json()
+                return cast("dict[str, Any]", response.json())
 
             if status == 410:
                 # Expired delta/sync token
@@ -222,7 +222,7 @@ class GraphClient:
         return min(max(0.0, seconds), _MAX_RETRY_AFTER_SECONDS)
 
     def _backoff(self, attempt: int) -> float:
-        return self._base_delay * (2**attempt) + random.uniform(0, 0.5)  # noqa: S311
+        return float(self._base_delay * (2**attempt) + random.uniform(0, 0.5))  # noqa: S311
 
     def _sleep_backoff(self, attempt: int) -> None:
         time.sleep(self._backoff(attempt))

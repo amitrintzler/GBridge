@@ -10,11 +10,16 @@ import contextlib
 import platform
 import sys
 import webbrowser
+from typing import TYPE_CHECKING
 
 from gbridge import __version__
 from gbridge.config.defaults import GOOGLE_SCOPES
 from gbridge.config.settings import Settings
 from gbridge.utils.logger import setup_logger
+
+if TYPE_CHECKING:
+    from gbridge.core.ledger import SyncLedger
+    from gbridge.core.pusher import Pusher
 
 logger = setup_logger(__name__)
 
@@ -512,7 +517,13 @@ def cmd_outlook_push(args: argparse.Namespace) -> int:
     return 0
 
 
-def _build_cli_pusher(settings, ledger, mode, *, dry_run):
+def _build_cli_pusher(
+    settings: Settings,
+    ledger: SyncLedger,
+    mode: str,
+    *,
+    dry_run: bool,
+) -> Pusher | None:
     from gbridge.core.pusher import Pusher
 
     if dry_run:

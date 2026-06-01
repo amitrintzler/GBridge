@@ -22,13 +22,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from gbridge.core import conflicts as conflicts_module
 from gbridge.core.hasher import content_hash
 from gbridge.microsoft._http import GraphError, PreconditionFailedError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from gbridge.config.settings import Settings
     from gbridge.core.ledger import SyncItem, SyncLedger
     from gbridge.dav.storage import DavProjector
@@ -190,10 +192,10 @@ class Pusher:
         self,
         *,
         item_type: str,
-        items: list[object] | None,
-        get_id,
-        get_parent,
-        apply,
+        items: list[Any] | None,
+        get_id: Callable[[Any], str],
+        get_parent: Callable[[Any], str],
+        apply: Callable[[PlannedAction, Any, PushStats], None],
     ) -> PushStats:
         stats = PushStats()
         planned = {(p.item.google_id, p.item.google_parent_id): p for p in self.plan(item_type)}

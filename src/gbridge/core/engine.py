@@ -124,7 +124,8 @@ class SyncEngine:
     def _sync_events(self, calendar_svc: CalendarService) -> SyncStats:
         total_stats = SyncStats()
         calendars = calendar_svc.list_calendars()
-        enabled = set(self._settings.get("enabled_calendars") or [])  # type: ignore[arg-type]
+        raw_enabled = self._settings.get("enabled_calendars") or []
+        enabled: set[str] = set(raw_enabled) if isinstance(raw_enabled, list) else set()
         if enabled:
             calendars = [c for c in calendars if c["id"] in enabled]
             logger.info("Syncing %d of %d calendars (user-selected)",
@@ -158,7 +159,8 @@ class SyncEngine:
     def _sync_tasks(self, tasks_svc: TasksService) -> SyncStats:
         total_stats = SyncStats()
         tasklists = tasks_svc.list_tasklists()
-        enabled = set(self._settings.get("enabled_tasklists") or [])  # type: ignore[arg-type]
+        raw_enabled = self._settings.get("enabled_tasklists") or []
+        enabled: set[str] = set(raw_enabled) if isinstance(raw_enabled, list) else set()
         if enabled:
             tasklists = [tl for tl in tasklists if tl["id"] in enabled]
             logger.info("Syncing %d of %d tasklists (user-selected)",
