@@ -92,6 +92,7 @@ class Pusher:
         self._calendar = calendar_svc
         self._tasks = tasks_svc
         self._projector = projector
+        self._progress_cb: Callable[[str, int, int], None] | None = None
 
     @property
     def mode(self) -> PushMode:
@@ -103,12 +104,16 @@ class Pusher:
         contacts: list[GoogleContact] | None = None,
         events: list[GoogleEvent] | None = None,
         tasks: list[GoogleTask] | None = None,
+        progress_cb: Callable[[str, int, int], None] | None = None,
     ) -> dict[str, PushStats]:
         """Push every ledger resource type. Returns per-type stats.
 
         In non-dry modes the corresponding model list is required so the
-        pusher has something to send to Outlook.
+        pusher has something to send to Outlook. ``progress_cb`` (optional)
+        is called as ``(item_type, done, total)`` as each planned item is
+        handled.
         """
+        self._progress_cb = progress_cb
         if self._mode == "dav":
             results = self._run_dav(contacts or [], events or [], tasks or [])
             # DAV path: deletion is implicit (projector rewrote the whole tree).
@@ -217,8 +222,11 @@ class Pusher:
 
         # Build a lookup from Google id -> model.
         model_index = {(get_id(m), get_parent(m)): m for m in items}
+        total = len(planned)
 
-        for key, plan_entry in planned.items():
+        for idx, (key, plan_entry) in enumerate(planned.items(), start=1):
+            if self._progress_cb is not None:
+                self._progress_cb(item_type, idx, total)
             model = model_index.get(key)
             if plan_entry.action == "noop":
                 stats.unchanged += 1

@@ -282,7 +282,12 @@ def cmd_sync(args: argparse.Namespace) -> int:
         ledger = SyncLedger(settings.db_path)
         try:
             engine = SyncEngine(ledger, auth, settings)
-            results = engine.run_sync()
+
+            def _progress(phase: str, done: int, total: int) -> None:
+                if done == total and total > 0:
+                    _print(f"  {phase}: {total} processed")
+
+            results = engine.run_sync(progress_cb=_progress)
         finally:
             ledger.close()
     except Exception as exc:
@@ -490,7 +495,12 @@ def cmd_outlook_auth(args: argparse.Namespace) -> int:
 
 
 def cmd_outlook_push(args: argparse.Namespace) -> int:
-    """Run a single push cycle (ledger -> Outlook)."""
+    """Run a single push cycle (ledger -> Outlook).
+
+    A real (non-dry) push needs the current Google models, so we refresh
+    from Google first and feed those into the pusher. Dry-run classifies
+    from the ledger alone and skips the Google round-trip.
+    """
     from gbridge.core.ledger import SyncLedger
 
     settings = Settings()
@@ -499,12 +509,47 @@ def cmd_outlook_push(args: argparse.Namespace) -> int:
         _print("outlook_mode is 'disabled'. Set it to 'graph' or 'dav' in config.")
         return 1
 
+    dry = getattr(args, "dry", False)
+
+    def _progress(phase: str, done: int, total: int) -> None:
+        if done == total and total > 0:
+            _print(f"  {phase}: {total} processed")
+
+    contacts = events = tasks = None
     ledger = SyncLedger(settings.db_path)
     try:
-        pusher = _build_cli_pusher(settings, ledger, mode, dry_run=getattr(args, "dry", False))
+        if not dry:
+            # Refresh from Google so the push operates on live models.
+            secrets_path = settings.client_secrets_path
+            if not secrets_path.exists():
+                _print(_client_secrets_instructions(str(secrets_path)))
+                return 1
+            from gbridge.core.engine import SyncEngine
+            from gbridge.google.auth import GoogleAuthManager
+
+            auth = GoogleAuthManager(secrets_path, GOOGLE_SCOPES)
+            auth.get_credentials()
+            _print("Refreshing from Google...")
+            engine = SyncEngine(ledger, auth, settings)
+            engine.run_sync(progress_cb=_progress)
+            contacts = engine.last_contacts
+            events = engine.last_events
+            tasks = engine.last_tasks
+
+        pusher = _build_cli_pusher(settings, ledger, mode, dry_run=dry)
         if pusher is None:
             return 1
-        results = pusher.run_push()
+        _print("Pushing to Outlook...")
+        results = pusher.run_push(
+            contacts=contacts,
+            events=events,
+            tasks=tasks,
+            progress_cb=_progress,
+        )
+    except Exception as exc:  # noqa: BLE001
+        _print(f"\nPush failed: {exc}")
+        logger.exception("Outlook push failed")
+        return 1
     finally:
         ledger.close()
 
@@ -565,6 +610,106 @@ def _build_cli_pusher(
         )
         return Pusher(ledger, settings, mode="dav", projector=DavProjector(cfg.storage_dir))
     return None
+
+
+def _cmd_resource_selection(
+    args: argparse.Namespace,
+    *,
+    kind: str,
+    setting_key: str,
+    service_attr: str,
+    list_method: str,
+    label_key: str,
+) -> int:
+    """Shared logic for `gbridge calendars` / `gbridge tasklists`.
+
+    No flags  -> list available resources, marking which are synced.
+    --all     -> clear the filter (sync everything).
+    --select  -> comma-separated IDs to sync exclusively.
+    """
+    settings = Settings()
+
+    if getattr(args, "all", False):
+        settings.set(setting_key, [])
+        settings.save()
+        _print(f"All {kind} will be synced (filter cleared).")
+        return 0
+
+    select = getattr(args, "select", None)
+    if select:
+        ids = [s.strip() for s in select.split(",") if s.strip()]
+        settings.set(setting_key, ids)
+        settings.save()
+        _print(f"{kind.capitalize()} filter set to {len(ids)} item(s).")
+        for i in ids:
+            _print(f"    {i}")
+        return 0
+
+    # Default action: list available resources with current enabled state.
+    secrets_path = settings.client_secrets_path
+    if not secrets_path.exists():
+        _print(_client_secrets_instructions(str(secrets_path)))
+        return 1
+
+    from gbridge.google.auth import GoogleAuthManager
+
+    try:
+        auth = GoogleAuthManager(secrets_path, GOOGLE_SCOPES)
+        creds = auth.get_credentials()
+    except Exception as exc:  # noqa: BLE001
+        _print(f"Authentication failed: {exc}")
+        return 1
+
+    if service_attr == "calendar":
+        from gbridge.google.calendar import CalendarService
+
+        svc: object = CalendarService(creds)
+    else:
+        from gbridge.google.tasks import TasksService
+
+        svc = TasksService(creds)
+    items = getattr(svc, list_method)()
+
+    raw_enabled = settings.get(setting_key) or []
+    enabled: set[str] = set(raw_enabled) if isinstance(raw_enabled, list) else set()
+    _print(f"GBridge v{__version__} — {kind}\n")
+    if not enabled:
+        _print(f"  (no filter set — ALL {kind} are synced)\n")
+    for it in items:
+        rid = it["id"]
+        synced = (not enabled) or rid in enabled
+        mark = "[x]" if synced else "[ ]"
+        _print(f"  {mark} {it.get(label_key, rid)}")
+        _print(f"        id: {rid}")
+    _print(
+        f"\n  Sync only some: gbridge {kind} --select <id1,id2>\n"
+        f"  Sync everything: gbridge {kind} --all"
+    )
+    return 0
+
+
+def cmd_calendars(args: argparse.Namespace) -> int:
+    """List / select which Google calendars are synced."""
+    return _cmd_resource_selection(
+        args,
+        kind="calendars",
+        setting_key="enabled_calendars",
+        service_attr="calendar",
+        list_method="list_calendars",
+        label_key="summary",
+    )
+
+
+def cmd_tasklists(args: argparse.Namespace) -> int:
+    """List / select which Google task lists are synced."""
+    return _cmd_resource_selection(
+        args,
+        kind="tasklists",
+        setting_key="enabled_tasklists",
+        service_attr="tasks",
+        list_method="list_tasklists",
+        label_key="title",
+    )
 
 
 def cmd_outlook_status(args: argparse.Namespace) -> int:
@@ -734,6 +879,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="which side wins",
     )
 
+    # Resource selection — choose which calendars / task lists to sync.
+    for res in ("calendars", "tasklists"):
+        res_p = subparsers.add_parser(
+            res, help=f"list or choose which Google {res} are synced"
+        )
+        group = res_p.add_mutually_exclusive_group()
+        group.add_argument(
+            "--select",
+            metavar="ID1,ID2",
+            help=f"sync only these {res} (comma-separated IDs)",
+        )
+        group.add_argument(
+            "--all",
+            action="store_true",
+            help=f"clear the filter and sync all {res}",
+        )
+
     return parser
 
 
@@ -756,6 +918,8 @@ def main() -> int:
         "gui": cmd_gui,
         "outlook": cmd_outlook,
         "conflicts": cmd_conflicts,
+        "calendars": cmd_calendars,
+        "tasklists": cmd_tasklists,
     }
 
     # --gui on the setup command redirects to the Tk wizard

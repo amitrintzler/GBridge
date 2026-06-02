@@ -23,11 +23,16 @@ from gbridge.google.people import PeopleService
 from gbridge.google.tasks import TasksService
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from gbridge.config.settings import Settings
     from gbridge.core.ledger import SyncLedger
     from gbridge.google.auth import GoogleAuthManager
 
 logger = logging.getLogger(__name__)
+
+# (phase, items_done, items_total) — items_total is per fetched batch.
+ProgressFn = "Callable[[str, int, int], None]"
 
 
 @dataclass
@@ -57,17 +62,27 @@ class SyncEngine:
         self.last_contacts: list[GoogleContact] = []
         self.last_events: list[GoogleEvent] = []
         self.last_tasks: list[GoogleTask] = []
+        self._progress_cb: Callable[[str, int, int], None] | None = None
 
-    def run_sync(self) -> dict[str, SyncStats]:
+    def run_sync(
+        self,
+        *,
+        progress_cb: Callable[[str, int, int], None] | None = None,
+    ) -> dict[str, SyncStats]:
         """Run a full sync cycle for all resource types.
 
         Returns a dict mapping resource type to its sync statistics.
+
+        ``progress_cb`` (optional) is called as ``(phase, done, total)`` while
+        each fetched batch is processed, so a CLI or GUI can show progress on
+        large accounts. ``total`` is the size of the current fetched batch.
 
         Partial-sync resume: before each resource type we write a
         checkpoint into sync_state so that if the process dies mid-cycle
         the next run can log which phase was incomplete. The checkpoint
         is cleared on successful completion.
         """
+        self._progress_cb = progress_cb
         creds = self._auth.get_credentials()
         results: dict[str, SyncStats] = {}
 
@@ -196,8 +211,14 @@ class SyncEngine:
     ) -> SyncStats:
         """Hash each item, compare with ledger, and record changes."""
         stats = SyncStats()
+        total = len(items)
+        # Manual counter (not enumerate): enumerate() over the union-of-lists
+        # type widens the element to `object`, which breaks mypy on the
+        # content_hash / _get_google_id calls below.
+        idx = 0
 
         for item in items:
+            idx += 1  # noqa: SIM113 - enumerate widens union element to object
             h = content_hash(item)
             google_id = self._get_google_id(item)
             etag = self._get_etag(item)
@@ -217,6 +238,9 @@ class SyncEngine:
                 stats.updated += 1
             else:
                 stats.unchanged += 1
+
+            if self._progress_cb is not None:
+                self._progress_cb(item_type, idx, total)
 
         return stats
 

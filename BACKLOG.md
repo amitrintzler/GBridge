@@ -77,7 +77,13 @@
       are logged rather than silently dropped.
 - [x] Graph-side deletion propagation (schema v3 `pending_deletions` queue)
 - [x] Partial-sync resume — `sync_phase` checkpoint in `sync_state` warns on next run
-- [x] Multi-calendar / multi-tasklist selection (settings fields honored by engine)
+- [x] Multi-calendar / multi-tasklist selection — engine honors the settings
+      AND `gbridge calendars` / `gbridge tasklists` CLI lets users list and
+      choose them (`--select id1,id2` / `--all`) without hand-editing config
+- [x] Sync progress indicators — optional `progress_cb` on `run_sync` /
+      `run_push`, surfaced by `gbridge sync` and `gbridge outlook push`
+- [x] `gbridge outlook push` now refreshes from Google first so a standalone
+      push actually has live models (was a no-op for graph mode before)
 
 ## Shipped Microsoft client_id note
 The default `MICROSOFT_PUBLIC_CLIENT_ID` in `src/gbridge/config/defaults.py`

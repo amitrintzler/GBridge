@@ -48,10 +48,18 @@ Section "Install"
   ; Create config directory for the user
   CreateDirectory "$APPDATA\${APPNAME}"
 
-  ; ---- Outlook CalDav Synchronizer (optional bundled addin) --------------
-  ; If OutlookCalDavSynchronizer.msi is placed next to this .nsi before
-  ; build, we install it silently for the standalone-Outlook DAV path.
-  ; GBridge still works without it (M365/Graph path doesn't need it).
+  ; ---- Outlook CalDav Synchronizer (optional addin, standalone-Outlook) --
+  ; The DAV path (standalone classic Outlook) needs the free Outlook CalDav
+  ; Synchronizer addin. The M365 / Graph path does NOT need it, so this is
+  ; always optional and never blocks the GBridge install.
+  ;
+  ; Build-time choice:
+  ;   * If installer\windows\vendor\OutlookCalDavSynchronizer.msi is present
+  ;     when makensis runs, it is bundled and installed silently here.
+  ;   * Otherwise the user is told exactly where to get it (a checked-in URL
+  ;     download is intentionally NOT used: OCS ships as a versioned archive,
+  ;     not a stable MSI URL, so an unattended fetch can't be verified at
+  ;     build time — see installer/windows/README for the vendoring step).
   !if /FileExists "vendor\OutlookCalDavSynchronizer.msi"
     DetailPrint "Installing Outlook CalDav Synchronizer (bundled)"
     File "/oname=OutlookCalDavSynchronizer.msi" "vendor\OutlookCalDavSynchronizer.msi"
@@ -61,7 +69,9 @@ Section "Install"
         DetailPrint "OCS MSI returned $0 (ignored; GBridge install continues)"
     ${EndIf}
   !else
-    DetailPrint "OutlookCalDavSynchronizer.msi not vendored — DAV path will need manual install"
+    DetailPrint "Outlook CalDav Synchronizer not bundled."
+    DetailPrint "  Only needed for standalone (non-M365) Outlook."
+    DetailPrint "  Get it from: https://caldavsynchronizer.org/"
   !endif
 
   ; Write uninstaller

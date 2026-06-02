@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Initial release. Phase 1 (Google read) + Phase 2 (Outlook write) + Phase 3
 (daemon / tray / wizard / autostart) all landed in the same cut.
 
+### Added (v0.2.0 features — non-owner items)
+
+- **Calendar / task-list selection from the CLI.** `gbridge calendars` and
+  `gbridge tasklists` list your Google calendars/lists and mark which are
+  synced; `--select id1,id2` limits the sync, `--all` clears the filter.
+  Previously the engine honored these settings but they could only be set by
+  hand-editing config.json.
+- **Sync/push progress indicators.** `SyncEngine.run_sync()` and
+  `Pusher.run_push()` accept an optional `progress_cb(phase, done, total)`;
+  `gbridge sync` and `gbridge outlook push` print per-phase progress so large
+  accounts give feedback.
+- **`gbridge outlook push` now works standalone.** It refreshes from Google
+  first so the push operates on live models — previously a direct
+  `outlook push` in graph mode marked every item failed because it had no
+  source data. Dry-run still classifies from the ledger alone.
+- **Installer guidance for the Outlook CalDav Synchronizer addin.** The NSIS
+  script bundles + silently installs the OCS MSI when vendored, and otherwise
+  points the user to caldavsynchronizer.org; see `installer/windows/README.md`
+  for the one-time vendoring step.
+
 ### Fixed (correctness pass)
 
 - **Conflict resolution now actually takes effect.** Previously the pusher
