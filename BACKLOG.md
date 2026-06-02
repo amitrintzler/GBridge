@@ -53,17 +53,21 @@
       `gbridge setup --gui`, `gbridge outlook {auth,push,status}`,
       `gbridge conflicts {list,resolve}`
 
-## Phase 4 — Packaging & Distribution (remaining)
-- [ ] Test Windows .exe build on actual Windows machine (user task)
-- [ ] Test macOS build on actual macOS machine
-- [ ] Test NSIS installer (install/uninstall/shortcuts) end-to-end
-- [ ] Test macOS .dmg creation
-- [ ] Test Linux .deb/.rpm packages
-- [ ] Create first GitHub Release (tag v0.1.0)
-- [ ] Verify GitHub Actions build-installers workflow
-- [ ] Verify security workflow runs on GitHub
+## Phase 4 — Packaging & Distribution
+- [x] macOS .dmg creation — `installer/macos/build.sh` builds GBridge.app and
+      packages a .dmg via hdiutil (no Homebrew needed); CI build-installers
+      ships `gbridge-macos.dmg` on every release tag
+- [x] Create first GitHub Release (tag v0.1.0)
+- [x] Verify GitHub Actions build-installers workflow (green on v0.1.0)
+- [x] Verify security workflow runs on GitHub (green)
+- [ ] Test Windows .exe + NSIS installer on a real Windows machine (user task —
+      `installer\windows\build.bat`, needs NSIS installed)
+- [ ] Test the .dmg install flow on a real Mac (user task — open .dmg, drag to
+      Applications, run setup)
+- [ ] Test Linux .deb/.rpm packages (lower priority)
 - [ ] Verify Mermaid diagrams render on GitHub
-- [ ] Windows code signing (Authenticode) — avoid SmartScreen warnings
+- [ ] Windows code signing (Authenticode) — avoid SmartScreen warnings (owner: cert cost)
+- [ ] macOS notarization — avoid Gatekeeper warning (owner: Apple Developer acct)
 
 ## Phase 5 — Production Hardening (remaining)
 - [ ] End-to-end test with real Google account (user task)

@@ -56,19 +56,40 @@ cat > "$APP_DIR/Contents/Info.plist" << 'PLIST'
 </plist>
 PLIST
 
-# Create DMG if create-dmg is available
+# Create the .dmg.  Prefer create-dmg (nicer layout with an Applications
+# drop-link) when present, but ALWAYS fall back to hdiutil — which ships with
+# every macOS install — so a .dmg is produced even without Homebrew.
+DMG_PATH="dist/GBridge.dmg"
+rm -f "$DMG_PATH"
+
 if command -v create-dmg &> /dev/null; then
+    echo "      Using create-dmg..."
     create-dmg \
         --volname "GBridge" \
         --window-size 600 400 \
+        --icon-size 100 \
         --app-drop-link 400 200 \
-        "dist/GBridge.dmg" \
+        "$DMG_PATH" \
         "$APP_DIR"
-    echo "      Done: dist/GBridge.dmg"
 else
-    echo "      create-dmg not found — .app bundle created at: $APP_DIR"
-    echo "      Install create-dmg for .dmg: brew install create-dmg"
+    echo "      create-dmg not found — using built-in hdiutil..."
+    # Stage just the .app (and an Applications symlink) into a clean folder.
+    STAGE="$(mktemp -d)"
+    cp -R "$APP_DIR" "$STAGE/"
+    ln -s /Applications "$STAGE/Applications"
+    hdiutil create \
+        -volname "GBridge" \
+        -srcfolder "$STAGE" \
+        -ov -format UDZO \
+        "$DMG_PATH"
+    rm -rf "$STAGE"
 fi
 
+echo "      Done: $DMG_PATH"
 echo
 echo "=== Build complete ==="
+echo
+echo "Test it:"
+echo "  open $DMG_PATH         # mount and inspect"
+echo "  Drag GBridge.app to Applications, then in Terminal:"
+echo "  /Applications/GBridge.app/Contents/MacOS/gbridge setup"

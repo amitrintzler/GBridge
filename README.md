@@ -81,13 +81,16 @@ graph LR
 
 ### macOS
 
-1. Download **`gbridge-macos`** from the [Releases page](https://github.com/amitrintzler/GBridge/releases/latest)
-2. Open Terminal (Spotlight → "Terminal")
-3. Run:
+1. Download **`gbridge-macos.dmg`** from the [Releases page](https://github.com/amitrintzler/GBridge/releases/latest)
+2. Open the `.dmg` and drag **GBridge** to Applications
+3. Open Terminal (Spotlight → "Terminal") and run:
    ```bash
-   chmod +x ~/Downloads/gbridge-macos
-   ~/Downloads/gbridge-macos setup
+   /Applications/GBridge.app/Contents/MacOS/gbridge setup
    ```
+
+> macOS Gatekeeper may warn that the app is from an unidentified developer
+> (it isn't notarized yet). Right-click GBridge → **Open**, or allow it under
+> System Settings → Privacy & Security.
 
 ### Linux
 

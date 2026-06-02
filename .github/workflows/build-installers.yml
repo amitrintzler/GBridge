@@ -44,14 +44,16 @@ jobs:
       - name: Install dependencies
         run: pip install -e . pyinstaller
 
-      - name: Build with PyInstaller
-        run: pyinstaller gbridge.spec --distpath dist/macos --workpath build/macos --clean -y
+      - name: Build .app + .dmg
+        # build.sh runs PyInstaller, wraps the binary in GBridge.app, and
+        # packages a .dmg via hdiutil (no Homebrew needed).
+        run: bash installer/macos/build.sh
 
-      - name: Upload macOS binary
+      - name: Upload macOS dmg
         uses: actions/upload-artifact@v4
         with:
           name: gbridge-macos
-          path: dist/macos/gbridge
+          path: dist/GBridge.dmg
 
   build-linux:
     runs-on: ubuntu-latest
@@ -86,18 +88,18 @@ jobs:
           path: artifacts
 
       - name: Prepare release artifacts
-        # download-artifact creates subdirectories (artifacts/gbridge-macos/,
-        # artifacts/gbridge-linux/) with the same name as the artifact.
-        # Copying to root-level names avoids the mv-into-directory collision.
+        # download-artifact creates subdirectories named after each artifact.
+        # Copy to root-level names; macOS ships a .dmg, Windows/Linux ship the
+        # bare PyInstaller binary.
         run: |
           cp artifacts/gbridge-windows/gbridge.exe gbridge-windows.exe
-          cp artifacts/gbridge-macos/gbridge    gbridge-macos
-          cp artifacts/gbridge-linux/gbridge    gbridge-linux
-          chmod +x gbridge-macos gbridge-linux
+          cp artifacts/gbridge-macos/GBridge.dmg   gbridge-macos.dmg
+          cp artifacts/gbridge-linux/gbridge       gbridge-linux
+          chmod +x gbridge-linux
 
       - name: Generate SHA-256 checksums
         run: |
-          sha256sum gbridge-windows.exe gbridge-macos gbridge-linux > checksums.sha256
+          sha256sum gbridge-windows.exe gbridge-macos.dmg gbridge-linux > checksums.sha256
           echo "=== Checksums ==="
           cat checksums.sha256
 
@@ -106,7 +108,7 @@ jobs:
         with:
           files: |
             gbridge-windows.exe
-            gbridge-macos
+            gbridge-macos.dmg
             gbridge-linux
             checksums.sha256
           body: |
@@ -115,8 +117,8 @@ jobs:
             ### Download for your platform:
             | Platform | File | Instructions |
             |---|---|---|
-            | **Windows** | `gbridge-windows.exe` | Download, double-click, follow the setup wizard |
-            | **macOS** | `gbridge-macos` | Download, `chmod +x gbridge-macos`, run `./gbridge-macos setup` |
+            | **Windows** | `gbridge-windows.exe` | Download, run it, then `gbridge setup` in a terminal |
+            | **macOS** | `gbridge-macos.dmg` | Open the .dmg, drag GBridge to Applications, then run `/Applications/GBridge.app/Contents/MacOS/gbridge setup` |
             | **Linux** | `gbridge-linux` | Download, `chmod +x gbridge-linux`, run `./gbridge-linux setup` |
 
             No Python installation required. Everything is bundled.
