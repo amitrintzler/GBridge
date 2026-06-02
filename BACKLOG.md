@@ -96,9 +96,11 @@ Flipping that constant to a registered GBridge-owned app is a future
 release task.
 
 ## Known Gaps / Technical Debt (remaining)
-- [ ] mypy strict mode — kept at `--ignore-missing-imports` for now due to
-      vobject / radicale / msal stub coverage. Can tighten per-package once
-      upstream stubs mature.
+- [x] mypy: blanket `--ignore-missing-imports` removed from CI. Stub-less
+      third-party libs (apscheduler, googleapiclient, google_auth_oauthlib,
+      msal, plyer, pystray, vobject) are scoped in `[[tool.mypy.overrides]]`,
+      so a missing first-party import is now a hard error. `disallow_untyped_defs`
+      remains on.
 - [x] Test coverage — 80% floor enforced via
       `pytest --cov=src/gbridge --cov-fail-under=80` (see pyproject notes)
 - [ ] Integration tests with a mocked Google API server (unit tests use

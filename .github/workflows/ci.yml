@@ -35,7 +35,10 @@ jobs:
         run: ruff check src/ tests/
 
       - name: Type check with mypy
-        run: mypy src/gbridge/ --ignore-missing-imports
+        # No blanket --ignore-missing-imports: stub-less third-party libs are
+        # scoped in pyproject [[tool.mypy.overrides]], so a missing first-party
+        # import is still a hard error.
+        run: mypy src/gbridge/
 
       - name: Run tests
         run: pytest tests/ -v --tb=short

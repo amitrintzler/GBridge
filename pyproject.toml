@@ -73,6 +73,21 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 
+# Third-party packages that ship no type stubs / py.typed marker. Scoping the
+# ignore per-module (instead of a blanket --ignore-missing-imports on the CLI)
+# means a genuinely missing first-party import is still reported as an error.
+[[tool.mypy.overrides]]
+module = [
+    "apscheduler.*",
+    "googleapiclient.*",
+    "google_auth_oauthlib.*",
+    "msal",
+    "plyer",
+    "pystray",
+    "vobject",
+]
+ignore_missing_imports = true
+
 [tool.bandit]
 exclude_dirs = ["tests"]
 # B105/B106 — 'password' is a bandit false positive on keyring key names.
