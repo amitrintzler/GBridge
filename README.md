@@ -241,6 +241,7 @@ graph TD
 | Command | What it does |
 |---|---|
 | `gbridge setup` | **First-time setup wizard** |
+| `gbridge doctor` | **Self-check — what's configured and what's missing** |
 | `gbridge` | Run a Google sync (default command) |
 | `gbridge status` | Show ledger counts and last sync time |
 | `gbridge auth` | Re-authenticate with Google |

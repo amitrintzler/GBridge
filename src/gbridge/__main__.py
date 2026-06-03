@@ -445,6 +445,20 @@ def cmd_gui(args: argparse.Namespace) -> int:
     return run_gui()
 
 
+def cmd_doctor(args: argparse.Namespace) -> int:
+    """Self-check: report what's configured and what's missing."""
+    from gbridge.core.diagnostics import run_diagnostics, summary_line
+
+    settings = Settings()
+    checks = run_diagnostics(settings)
+    _print(f"GBridge v{__version__} — setup check\n")
+    for c in checks:
+        _print(c.render())
+    _print(f"\n{summary_line(checks)}")
+    # Exit non-zero only when something is hard-broken (a 'fail').
+    return 1 if any(c.status == "fail" for c in checks) else 0
+
+
 # ---------------------------------------------------------------------------
 # Phase 2: Outlook + conflicts subcommands
 # ---------------------------------------------------------------------------
@@ -841,6 +855,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="'install', 'remove', or 'status' (default: status)",
     )
     subparsers.add_parser("gui", help="launch the Tkinter GUI wizard")
+    subparsers.add_parser(
+        "doctor", help="self-check: what's configured and what's missing"
+    )
 
     # Phase 2 — Outlook + conflicts
     outlook_p = subparsers.add_parser(
@@ -916,6 +933,7 @@ def main() -> int:
         "daemon": cmd_daemon,
         "autostart": cmd_autostart,
         "gui": cmd_gui,
+        "doctor": cmd_doctor,
         "outlook": cmd_outlook,
         "conflicts": cmd_conflicts,
         "calendars": cmd_calendars,

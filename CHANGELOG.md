@@ -5,6 +5,19 @@ All notable changes to GBridge are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`gbridge doctor` self-check.** Read-only diagnostic that reports what's
+  configured and what's missing — Google credentials, sign-in, local sync
+  data, Microsoft app ID + sign-in, Outlook detection, write-back mode, and
+  pending conflicts — with a one-line "ready / setup needed" summary. Surfaced
+  in three places so non-technical users never need a terminal: the CLI
+  (`gbridge doctor`), a **"Check setup"** button in the Tk setup wizard, and a
+  **"Check setup"** item in the system-tray menu. It never triggers auth or
+  writes anything.
+
 ## [0.2.0] — 2026-06-03
 
 Post-0.1.0 correctness fixes and features. Ledger schema is unchanged (v3),

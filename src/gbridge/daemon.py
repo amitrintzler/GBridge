@@ -208,6 +208,15 @@ class Daemon:
         finally:
             ledger.close()
 
+    def _run_check(self) -> None:
+        """Run the read-only self-check; post the headline as a toast + log."""
+        from gbridge.core.diagnostics import run_diagnostics, summary_line
+
+        checks = run_diagnostics(self._settings)
+        for c in checks:
+            logger.info("doctor %s", c.render().strip())
+        notify("GBridge setup check", summary_line(checks))
+
     def _open_conflicts(self) -> None:
         try:
             from gbridge.gui.conflicts import run_conflicts_dialog
@@ -289,6 +298,7 @@ class Daemon:
             ),
             on_conflicts=self._open_conflicts,
             conflicts_count_fn=self._count_conflicts,
+            on_check=self._run_check,
         )
         if not tray_ok:
             logger.info("Running headless (no tray) — sync will still run on schedule")

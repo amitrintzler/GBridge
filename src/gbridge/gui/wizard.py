@@ -178,8 +178,28 @@ def run_gui() -> int:
 
         threading.Thread(target=_worker, daemon=True).start()
 
-    start_btn = tk.Button(root, text="Start setup", command=_start)
-    start_btn.pack(pady=5)
+    def _check() -> None:
+        """Run the read-only self-check and dump it into the log pane."""
+        from gbridge.core.diagnostics import run_diagnostics, summary_line
+
+        def _worker() -> None:
+            checks = run_diagnostics(settings)
+            log_queue.put("")
+            log_queue.put("Setup check:")
+            for c in checks:
+                log_queue.put(c.render())
+            log_queue.put("")
+            log_queue.put(summary_line(checks))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    button_row = tk.Frame(root)
+    button_row.pack(pady=5)
+    start_btn = tk.Button(button_row, text="Start setup", command=_start)
+    start_btn.pack(side="left", padx=4)
+    tk.Button(button_row, text="Check setup", command=_check).pack(
+        side="left", padx=4
+    )
 
     _poll_queue()
     root.mainloop()

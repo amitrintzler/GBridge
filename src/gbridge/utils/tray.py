@@ -37,6 +37,7 @@ def run_tray(
     on_push: Callable[[], None] | None = None,
     on_conflicts: Callable[[], None] | None = None,
     conflicts_count_fn: Callable[[], int] | None = None,
+    on_check: Callable[[], None] | None = None,
 ) -> bool:
     """Run the tray icon in the current thread.
 
@@ -102,6 +103,10 @@ def run_tray(
         except Exception:  # noqa: BLE001
             return False
 
+    def _on_check(icon: Any, item: Any) -> None:  # noqa: ARG001
+        if on_check is not None:
+            _spawn(on_check)
+
     menu_items: list[Any] = [pystray.MenuItem("Sync now", _on_sync)]
     if on_push is not None:
         menu_items.append(pystray.MenuItem("Push to Outlook", _on_push))
@@ -109,8 +114,10 @@ def run_tray(
         menu_items.append(
             pystray.MenuItem(_conflicts_label, _on_conflicts, visible=_conflicts_visible)
         )
+    menu_items.append(pystray.MenuItem("Show status", _on_status))
+    if on_check is not None:
+        menu_items.append(pystray.MenuItem("Check setup", _on_check))
     menu_items.extend([
-        pystray.MenuItem("Show status", _on_status),
         pystray.MenuItem("What GBridge reads", _on_what_we_read),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem("Quit", _on_quit),
