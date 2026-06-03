@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 APP_NAME = "GBridge"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.2.1"
 
 DEFAULT_SYNC_INTERVAL_MINUTES = 15
 DEFAULT_DB_NAME = "gbridge_sync.db"

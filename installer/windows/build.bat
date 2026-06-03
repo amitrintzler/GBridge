@@ -22,7 +22,7 @@ echo.
 
 REM Step 2: Build NSIS installer
 echo [2/2] Building installer with NSIS...
-makensis /DVERSION=0.2.0 installer\windows\gbridge.nsi
+makensis /DVERSION=0.2.1 installer\windows\gbridge.nsi
 if errorlevel 1 (
     echo ERROR: NSIS build failed
     exit /b 1

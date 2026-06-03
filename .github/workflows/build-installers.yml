@@ -50,7 +50,12 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" /DVERSION=0.2.0 installer\windows\gbridge.nsi
+          # Derive the installer version from the tag (v0.2.1 -> 0.2.1) so it
+          # never drifts from the release. Falls back to the .nsi default off-tag.
+          $ref = "${{ github.ref_name }}"
+          $ver = $ref -replace '^v', ''
+          if (-not $ver) { $ver = "0.0.0" }
+          & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" "/DVERSION=$ver" installer\windows\gbridge.nsi
 
       - name: Upload Windows installer
         continue-on-error: true
