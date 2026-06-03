@@ -25,10 +25,19 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -e . pip-audit
+        # Upgrade pip itself so the audit doesn't flag the runner's bundled pip
+        # (CVE-2026-3219 / -6357 were fixed in pip 26.1).
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pip-audit
 
       - name: Audit dependencies for known vulnerabilities
-        run: pip-audit --strict --desc
+        # --skip-editable: the local editable `gbridge` install is our own code,
+        # not on PyPI, so it can't be audited. We drop --strict because, with
+        # an editable install present, --strict treats that un-auditable
+        # package as a hard error. pip-audit still exits non-zero on any real
+        # CVE in third-party deps.
+        run: pip-audit --desc --skip-editable
 
   static-analysis:
     name: Static Security Analysis (Bandit)

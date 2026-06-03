@@ -38,6 +38,11 @@ dependencies = [
     "vobject>=0.9.7",
     "icalendar>=5.0.0",
     "radicale>=3.1.0",
+    # Security floors on transitive deps (pulled by msal / requests). Pinned
+    # above known-CVE versions; see CHANGELOG 0.2.0 / pip-audit PYSEC-2026-*.
+    "pyjwt>=2.13.0",     # PYSEC-2026-178 (DoS via detached JWS) fixed in 2.13.0
+    "urllib3>=2.7.0",    # PYSEC-2026-141/142 (decompression DoS, header leak)
+    "idna>=3.15",        # CVE-2026-45409 (idna.encode DoS) fixed in 3.15
 ]
 
 [project.optional-dependencies]

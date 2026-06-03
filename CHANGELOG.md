@@ -53,6 +53,14 @@ so upgrading in place is safe.
   stub-less third-party libs are scoped in `[[tool.mypy.overrides]]`, so a
   missing first-party import is now a hard error.
 
+### Security
+
+- Raised floors on transitive dependencies flagged by the weekly pip-audit
+  scan (advisories disclosed after the 0.1.0 release):
+  `pyjwt>=2.13.0` (PYSEC-2026-178), `urllib3>=2.7.0` (PYSEC-2026-141/142),
+  `idna>=3.15` (CVE-2026-45409). The security workflow now also upgrades pip
+  on the runner (CVE-2026-3219 / -6357).
+
 ## [0.1.0] — 2026-04-17
 
 Initial release. Phase 1 (Google read) + Phase 2 (Outlook write) + Phase 3
