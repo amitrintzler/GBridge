@@ -5,32 +5,12 @@ All notable changes to GBridge are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] — 2026-04-17
+## [0.2.0] — 2026-06-03
 
-Initial release. Phase 1 (Google read) + Phase 2 (Outlook write) + Phase 3
-(daemon / tray / wizard / autostart) all landed in the same cut.
+Post-0.1.0 correctness fixes and features. Ledger schema is unchanged (v3),
+so upgrading in place is safe.
 
-### Added (v0.2.0 features — non-owner items)
-
-- **Calendar / task-list selection from the CLI.** `gbridge calendars` and
-  `gbridge tasklists` list your Google calendars/lists and mark which are
-  synced; `--select id1,id2` limits the sync, `--all` clears the filter.
-  Previously the engine honored these settings but they could only be set by
-  hand-editing config.json.
-- **Sync/push progress indicators.** `SyncEngine.run_sync()` and
-  `Pusher.run_push()` accept an optional `progress_cb(phase, done, total)`;
-  `gbridge sync` and `gbridge outlook push` print per-phase progress so large
-  accounts give feedback.
-- **`gbridge outlook push` now works standalone.** It refreshes from Google
-  first so the push operates on live models — previously a direct
-  `outlook push` in graph mode marked every item failed because it had no
-  source data. Dry-run still classifies from the ledger alone.
-- **Installer guidance for the Outlook CalDav Synchronizer addin.** The NSIS
-  script bundles + silently installs the OCS MSI when vendored, and otherwise
-  points the user to caldavsynchronizer.org; see `installer/windows/README.md`
-  for the one-time vendoring step.
-
-### Fixed (correctness pass)
+### Fixed
 
 - **Conflict resolution now actually takes effect.** Previously the pusher
   never consulted the `winner` column: a resolved conflict did nothing, and
@@ -48,6 +28,35 @@ Initial release. Phase 1 (Google read) + Phase 2 (Outlook write) + Phase 3
   ordinal-prefixed BYDAY (`3TU`, `-1FR`) and `BYSETPOS`. Clauses with no
   Graph equivalent (BYYEARDAY, BYWEEKNO, EXDATE, RDATE) are now logged
   instead of silently dropped.
+- **`gbridge outlook push` works standalone.** It now refreshes from Google
+  first so the push operates on live models — previously a direct
+  `outlook push` in graph mode marked every item failed because it had no
+  source data. Dry-run still classifies from the ledger alone.
+
+### Added
+
+- **Calendar / task-list selection from the CLI.** `gbridge calendars` and
+  `gbridge tasklists` list your Google calendars/lists and mark which are
+  synced; `--select id1,id2` limits the sync, `--all` clears the filter.
+- **Sync/push progress indicators.** `SyncEngine.run_sync()` and
+  `Pusher.run_push()` accept an optional `progress_cb(phase, done, total)`;
+  `gbridge sync` and `gbridge outlook push` print per-phase progress.
+- **macOS `.dmg` always produced.** `installer/macos/build.sh` packages a
+  `.dmg` via `hdiutil` (no Homebrew needed); the release CI now ships
+  `gbridge-macos.dmg`.
+- **Windows installer in CI.** The release workflow builds the NSIS
+  `GBridge-Setup.exe` (best-effort) alongside the raw `gbridge-windows.exe`.
+
+### Changed
+
+- **mypy tightened.** Removed the blanket `--ignore-missing-imports` from CI;
+  stub-less third-party libs are scoped in `[[tool.mypy.overrides]]`, so a
+  missing first-party import is now a hard error.
+
+## [0.1.0] — 2026-04-17
+
+Initial release. Phase 1 (Google read) + Phase 2 (Outlook write) + Phase 3
+(daemon / tray / wizard / autostart) all landed in the same cut.
 
 ### Added (gap-close pass)
 

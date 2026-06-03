@@ -43,9 +43,9 @@ cat > "$APP_DIR/Contents/Info.plist" << 'PLIST'
     <key>CFBundleIdentifier</key>
     <string>com.amitrintzler.gbridge</string>
     <key>CFBundleVersion</key>
-    <string>0.1.0</string>
+    <string>0.2.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>0.2.0</string>
     <key>CFBundleExecutable</key>
     <string>gbridge</string>
     <key>LSMinimumSystemVersion</key>

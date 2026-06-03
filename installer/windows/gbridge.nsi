@@ -11,7 +11,7 @@
 !define DESCRIPTION "Sync Google Contacts, Calendar, and Tasks with Outlook"
 ; VERSION is passed from build.bat via /DVERSION=x.y.z
 !ifndef VERSION
-  !define VERSION "0.1.0"
+  !define VERSION "0.2.0"
 !endif
 !define HELPURL "https://github.com/amitrintzler/GBridge"
 !define INSTALLSIZE 50000  ; ~50MB estimate

@@ -6,11 +6,11 @@
 #   pip install pyinstaller
 #   gem install fpm   (for .deb/.rpm packaging)
 #
-# Output: dist/gbridge_0.1.0_amd64.deb, dist/gbridge-0.1.0.x86_64.rpm
+# Output: dist/gbridge_0.2.0_amd64.deb, dist/gbridge-0.2.0.x86_64.rpm
 
 set -e
 
-VERSION="0.1.0"
+VERSION="0.2.0"
 
 echo "=== Building GBridge for Linux ==="
 echo

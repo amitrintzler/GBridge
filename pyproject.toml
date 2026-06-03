@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gbridge"
-version = "0.1.0"
+version = "0.2.0"
 description = "Sync Google Contacts, Calendar, and Tasks with Microsoft Outlook"
 readme = "README.md"
 license = "MIT"

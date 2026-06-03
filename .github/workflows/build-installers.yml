@@ -31,6 +31,35 @@ jobs:
           name: gbridge-windows
           path: dist/windows/gbridge.exe
 
+      # Best-effort NSIS installer. continue-on-error means a toolchain hiccup
+      # (NSIS / EnVar plugin) never blocks the release — the raw exe still ships.
+      - name: Install NSIS + EnVar plugin
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          $env:Path += ";$env:ProgramFiles (x86)\NSIS"
+          # EnVar is a third-party plugin the .nsi uses for PATH edits.
+          $zip = "$env:RUNNER_TEMP\envar.zip"
+          Invoke-WebRequest -Uri "https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip" -OutFile $zip
+          $dest = "${env:ProgramFiles(x86)}\NSIS"
+          Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\envar" -Force
+          Copy-Item "$env:RUNNER_TEMP\envar\Plugins\*" "$dest\Plugins\" -Recurse -Force
+
+      - name: Build NSIS installer
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" /DVERSION=0.2.0 installer\windows\gbridge.nsi
+
+      - name: Upload Windows installer
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: gbridge-windows-installer
+          path: dist/GBridge-Setup.exe
+          if-no-files-found: warn
+
   build-macos:
     runs-on: macos-latest
     steps:
@@ -89,25 +118,35 @@ jobs:
 
       - name: Prepare release artifacts
         # download-artifact creates subdirectories named after each artifact.
-        # Copy to root-level names; macOS ships a .dmg, Windows/Linux ship the
-        # bare PyInstaller binary.
+        # macOS ships a .dmg, Windows ships the raw exe + (best-effort) NSIS
+        # installer, Linux ships the bare PyInstaller binary. The installer
+        # may be absent if its best-effort build failed — handle gracefully.
         run: |
           cp artifacts/gbridge-windows/gbridge.exe gbridge-windows.exe
           cp artifacts/gbridge-macos/GBridge.dmg   gbridge-macos.dmg
           cp artifacts/gbridge-linux/gbridge       gbridge-linux
           chmod +x gbridge-linux
+          if [ -f artifacts/gbridge-windows-installer/GBridge-Setup.exe ]; then
+            cp artifacts/gbridge-windows-installer/GBridge-Setup.exe GBridge-Setup.exe
+          else
+            echo "NSIS installer not produced this run — shipping raw exe only."
+          fi
 
       - name: Generate SHA-256 checksums
         run: |
-          sha256sum gbridge-windows.exe gbridge-macos.dmg gbridge-linux > checksums.sha256
+          files="gbridge-windows.exe gbridge-macos.dmg gbridge-linux"
+          [ -f GBridge-Setup.exe ] && files="$files GBridge-Setup.exe"
+          sha256sum $files > checksums.sha256
           echo "=== Checksums ==="
           cat checksums.sha256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          fail_on_unmatched_files: false
           files: |
             gbridge-windows.exe
+            GBridge-Setup.exe
             gbridge-macos.dmg
             gbridge-linux
             checksums.sha256
@@ -117,7 +156,8 @@ jobs:
             ### Download for your platform:
             | Platform | File | Instructions |
             |---|---|---|
-            | **Windows** | `gbridge-windows.exe` | Download, run it, then `gbridge setup` in a terminal |
+            | **Windows (installer)** | `GBridge-Setup.exe` | Recommended — installs shortcuts + uninstaller. Run it, then launch "GBridge Setup Wizard" from the Start Menu. |
+            | **Windows (portable)** | `gbridge-windows.exe` | No install — run it, then `gbridge setup` in a terminal |
             | **macOS** | `gbridge-macos.dmg` | Open the .dmg, drag GBridge to Applications, then run `/Applications/GBridge.app/Contents/MacOS/gbridge setup` |
             | **Linux** | `gbridge-linux` | Download, `chmod +x gbridge-linux`, run `./gbridge-linux setup` |
 
