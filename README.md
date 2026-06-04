@@ -166,14 +166,24 @@ You need a `client_secret.json` from the Google Cloud Console. The wizard opens 
 
 **Step 6 (optional) — Outlook write-back**
 
-To push Google data into Outlook you need a free Microsoft Azure app registration (one-time, 2 minutes):
+To push Google data into Outlook you need a free Microsoft Azure app
+registration (one-time, ~3 minutes). **Full step-by-step with screenshots of
+each field: [docs/AZURE_SETUP.md](docs/AZURE_SETUP.md).**
 
-1. Go to [portal.azure.com](https://portal.azure.com) → **Azure Active Directory → App registrations → New registration**
-2. Name: `GBridge`, Supported account types: **Personal + work/school**, Redirect URI: `Public client/native` → `http://localhost`
-3. Copy the **Application (client) ID** (a GUID)
-4. Run: `gbridge outlook auth --client-id <YOUR_GUID>`
+Short version:
 
-After that: `gbridge outlook push` (or it runs automatically in the background via `gbridge daemon`).
+1. [portal.azure.com](https://portal.azure.com) → **App registrations → New registration**
+2. Name `GBridge`; account types **"any org directory + personal"**; Redirect URI **Public client/native** → `http://localhost`
+3. **Authentication → Allow public client flows → Yes**
+4. **API permissions → Microsoft Graph → Delegated:** `Contacts.ReadWrite`, `Calendars.ReadWrite`, `Tasks.ReadWrite`
+5. Copy the **Application (client) ID**, then run:
+   ```bash
+   gbridge outlook auth --client-id <YOUR_GUID>
+   ```
+6. Set `"outlook_mode": "graph"` in `config.json`, then `gbridge outlook push`
+   (or let `gbridge daemon` do it on a schedule).
+
+Verify any time with **`gbridge doctor`**.
 
 ---
 

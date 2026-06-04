@@ -53,7 +53,9 @@ class MissingClientIdError(MicrosoftAuthError):
             "  3. Redirect URI: Public client / native, "
             "http://localhost\n"
             "  4. Copy the Application (client) ID, then set it in GBridge:\n"
-            "       gbridge outlook auth --client-id <YOUR_GUID>\n"
+            "       gbridge outlook auth --client-id <YOUR_GUID>\n\n"
+            "  Full step-by-step guide:\n"
+            "  https://github.com/amitrintzler/GBridge/blob/main/docs/AZURE_SETUP.md\n"
         )
 
 
